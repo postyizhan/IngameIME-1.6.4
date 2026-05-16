@@ -9,7 +9,7 @@ public class Config {
     private static Configuration config;
 
     public static String API_Windows = "TextServiceFramework";
-    public static boolean UiLess_Windows = false;
+    public static boolean UiLess_Windows = true;
     public static boolean TurnOffOnMouseMove = false;
     public static String AlphaModeText = "A";
     public static String NativeModeText = "中";
@@ -39,7 +39,7 @@ public class Config {
         if (!"TextServiceFramework".equals(API_Windows) && !"Imm32".equals(API_Windows)) {
             API_Windows = "TextServiceFramework";
         }
-        UiLess_Windows = config.get("uiless", "Windows", UiLess_Windows, "False uses the native Windows IME candidate UI. True asks IngameIME to render the candidate UI in-game.").getBoolean(UiLess_Windows);
+        UiLess_Windows = config.get("uiless", "Windows", UiLess_Windows, "True asks IngameIME to render the candidate UI in-game. False uses the native Windows IME candidate UI.").getBoolean(UiLess_Windows);
         TurnOffOnMouseMove = config.get("general", "TurnOffOnMouseMove", TurnOffOnMouseMove, "Turn off Input Method on mouse move.").getBoolean(TurnOffOnMouseMove);
         AlphaModeText = config.get("modetext", "AlphaMode", AlphaModeText, "Text to display when in Alpha mode.").getString();
         NativeModeText = config.get("modetext", "NativeMode", NativeModeText, "Text to display when in Native mode.").getString();
