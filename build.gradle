@@ -1,7 +1,5 @@
 buildscript {
     repositories {
-        maven { url uri('local-maven') }
-        mavenLocal()
         mavenCentral()
         maven {
             name = "forge"
@@ -15,7 +13,7 @@ buildscript {
         maven { url "https://repo.sleeping.town" }
     }
     dependencies {
-        classpath "agency.highlysuspect:voldeloom:2.4-SNAPSHOT"
+        classpath "agency.highlysuspect:voldeloom:2.4"
     }
 }
 apply plugin: 'agency.highlysuspect.voldeloom'
