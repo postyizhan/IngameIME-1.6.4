@@ -6,6 +6,7 @@ IngameIME is a client-side mod that brings input method support to Minecraft. Th
 
 - **✓** Chinese input
 - **✓** IME candidate window
+- **✓** Small - window/Full - screen Support
 - **✓** No input-method lock-up during gameplay
 
 > When no GUI is open, IngameIME automatically deactivates the native input context to prevent Chinese IMEs from intercepting gameplay keys such as WASD and Space. Therefore, even if the system is currently in Chinese input mode, players can still move, sprint, and control the game normally after closing chat or other input screens, without having movement keys swallowed by the input method.
