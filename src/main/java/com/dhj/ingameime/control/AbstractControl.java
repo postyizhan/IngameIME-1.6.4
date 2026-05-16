@@ -7,9 +7,24 @@ import org.lwjgl.input.Keyboard;
 
 import java.awt.Point;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public abstract class AbstractControl<T> implements IControl {
+    private static Method keyTyped;
+    static {
+        try {
+            try {
+                keyTyped = GuiScreen.class.getDeclaredMethod("keyTyped", char.class, int.class);
+            } catch (NoSuchMethodException ignored) {
+                keyTyped = GuiScreen.class.getDeclaredMethod("func_73869_a", char.class, int.class);
+            }
+            keyTyped.setAccessible(true);
+        } catch (Exception e) {
+            RuntimeException runtimeException = new RuntimeException("Failed to invoke GuiScreen.keyTyped", e);
+            throw runtimeException;
+        }
+    }
     protected final T controlObject;
 
     public AbstractControl(T controlObject) {
@@ -26,24 +41,17 @@ public abstract class AbstractControl<T> implements IControl {
         writeCurrentScreenText(text);
     }
 
-    public static void writeCurrentScreenText(String text) throws IOException {
+    public static void writeCurrentScreenText(String text) {
         GuiScreen screen = Minecraft.getMinecraft().currentScreen;
         if (screen == null || text == null) return;
         try {
-            Method keyTyped;
-            try {
-                keyTyped = GuiScreen.class.getDeclaredMethod("keyTyped", char.class, int.class);
-            } catch (NoSuchMethodException ignored) {
-                keyTyped = GuiScreen.class.getDeclaredMethod("func_73869_a", char.class, int.class);
-            }
-            keyTyped.setAccessible(true);
             for (int i = 0; i < text.length(); i++) {
                 keyTyped.invoke(screen, Character.valueOf(text.charAt(i)), Integer.valueOf(Keyboard.KEY_NONE));
             }
-        } catch (Exception e) {
-            IOException ioe = new IOException("Failed to invoke GuiScreen.keyTyped");
-            ioe.initCause(e);
-            throw ioe;
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 
