@@ -1,15 +1,15 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example Mod",
-  "version": "1.0.0",
+  "modid": "ingameime",
+  "name": "IngameIME",
+  "description": "Use InputMethod in full screen Minecraft.",
+  "version": "${version}",
   "mcversion": "1.6.4",
   "url": "",
   "updateUrl": "",
-  "authorList": ["YourName"],
-  "credits": "",
-  "logoFile": "",
+  "authorList": ["postyizhan"],
+  "credits": "Windmill_City, DHJComical, RuiXuqi, Andrea Frederica, Circulate233",
+  "logoFile": "assets/ingameime/logo.png",
   "screenshots": [],
   "dependencies": []
 }
