@@ -14,6 +14,18 @@ import java.lang.reflect.Method;
 import java.util.logging.Level;
 
 public class BookControl extends AbstractControl<Object> {
+    private static final Class GUI_SCREEN_BOOK_CLASS = GuiScreenBook.class;
+    private static final Field EDITING_TITLE = findField(GUI_SCREEN_BOOK_CLASS, new String[]{"editingTitle", "field_74172_m", "p"});
+    private static final Field BOOK_TITLE = findField(GUI_SCREEN_BOOK_CLASS, new String[]{"bookTitle", "field_74176_t", "w"});
+    private static final Field BOOK_MODIFIED = findField(GUI_SCREEN_BOOK_CLASS, new String[]{"bookModified", "field_74166_d", "e"});
+    private static final Field WIDTH = findField(GUI_SCREEN_BOOK_CLASS, new String[]{"width", "field_73880_f", "g"});
+    private static final Field BOOK_IMAGE_WIDTH = findField(GUI_SCREEN_BOOK_CLASS, new String[]{"bookImageWidth", "field_74171_o", "r"});
+    private static final Field BOOK_PAGES = findField(GUI_SCREEN_BOOK_CLASS, new String[]{"bookPages", "field_74177_s", "v"});
+    private static final Field CURR_PAGE = findField(GUI_SCREEN_BOOK_CLASS, new String[]{"currPage", "field_74179_q", "t"});
+    private static final Field TAG_STRING_DATA = findField(NBTTagString.class, new String[]{"data", "field_74751_a", "a"});
+    private static final Method APPEND_TEXT = findMethod(GUI_SCREEN_BOOK_CLASS, new String[]{"func_74160_b", "func_74160_b", "b"}, new Class[]{String.class});
+    private static final Method UPDATE_BUTTONS = findMethod(GUI_SCREEN_BOOK_CLASS, new String[]{"updateButtons", "func_74161_g", "h"}, new Class[0]);
+
     public BookControl(Object control) {
         super(control);
     }
@@ -22,11 +34,10 @@ public class BookControl extends AbstractControl<Object> {
     public void writeText(String text) throws IOException {
         if (text == null || text.length() == 0) return;
         try {
-            if (((Boolean) getField(controlObject, "editingTitle", "field_74172_m", "p")).booleanValue()) {
+            if (((Boolean) getField(controlObject, EDITING_TITLE)).booleanValue()) {
                 writeTitle(text);
             } else {
-                Method append = getMethod(controlObject, "func_74160_b", "func_74160_b", "b", new Class[]{String.class});
-                append.invoke(controlObject, new Object[]{text});
+                APPEND_TEXT.invoke(controlObject, new Object[]{text});
             }
         } catch (Throwable t) {
             IOException ioe = new IOException("Failed to write text to book");
@@ -36,15 +47,14 @@ public class BookControl extends AbstractControl<Object> {
     }
 
     private void writeTitle(String text) throws Exception {
-        String old = (String) getField(controlObject, "bookTitle", "field_74176_t", "w");
+        String old = (String) getField(controlObject, BOOK_TITLE);
         if (old == null) old = "";
         int room = 16 - old.length();
         if (room <= 0) return;
         String insert = text.length() > room ? text.substring(0, room) : text;
-        setField(controlObject, "bookTitle", "field_74176_t", "w", old + insert);
-        setField(controlObject, "bookModified", "field_74166_d", "e", Boolean.TRUE);
-        Method updateButtons = getMethod(controlObject, "updateButtons", "func_74161_g", "h", new Class[0]);
-        updateButtons.invoke(controlObject, new Object[0]);
+        setField(controlObject, BOOK_TITLE, old + insert);
+        setField(controlObject, BOOK_MODIFIED, Boolean.TRUE);
+        UPDATE_BUTTONS.invoke(controlObject, new Object[0]);
     }
 
     @Override
@@ -57,11 +67,11 @@ public class BookControl extends AbstractControl<Object> {
         try {
             Minecraft mc = Minecraft.getMinecraft();
             FontRenderer font = mc.fontRenderer;
-            int screenWidth = ((Integer) getField(controlObject, "width", "field_73880_f", "g")).intValue();
-            int left = (screenWidth - ((Integer) getField(controlObject, "bookImageWidth", "field_74171_o", "r")).intValue()) / 2;
+            int screenWidth = ((Integer) getField(controlObject, WIDTH)).intValue();
+            int left = (screenWidth - ((Integer) getField(controlObject, BOOK_IMAGE_WIDTH)).intValue()) / 2;
             int top = 2;
-            if (((Boolean) getField(controlObject, "editingTitle", "field_74172_m", "p")).booleanValue()) {
-                String title = (String) getField(controlObject, "bookTitle", "field_74176_t", "w");
+            if (((Boolean) getField(controlObject, EDITING_TITLE)).booleanValue()) {
+                String title = (String) getField(controlObject, BOOK_TITLE);
                 if (title == null) title = "";
                 return new Point(left + 36 + 58 + font.getStringWidth(title) / 2, top + 48);
             }
@@ -78,8 +88,8 @@ public class BookControl extends AbstractControl<Object> {
     }
 
     private String getCurrentPageText() throws Exception {
-        NBTTagList pages = (NBTTagList) getField(controlObject, "bookPages", "field_74177_s", "v");
-        int currPage = ((Integer) getField(controlObject, "currPage", "field_74179_q", "t")).intValue();
+        NBTTagList pages = (NBTTagList) getField(controlObject, BOOK_PAGES);
+        int currPage = ((Integer) getField(controlObject, CURR_PAGE)).intValue();
         if (pages == null || currPage < 0 || currPage >= pages.tagCount()) return "";
         NBTTagString page = (NBTTagString) pages.tagAt(currPage);
         return getTagStringData(page);
@@ -87,32 +97,32 @@ public class BookControl extends AbstractControl<Object> {
 
     private static String getTagStringData(NBTTagString tag) throws Exception {
         if (tag == null) return "";
-        String value = (String) getField(tag, "data", "field_74751_a", "a");
+        String value = (String) getField(tag, TAG_STRING_DATA);
         return value == null ? "" : value;
     }
 
-    private static Object getField(Object object, String deobfName, String srgName, String obfName) throws Exception {
-        Field field = findField(object.getClass(), new String[]{deobfName, srgName, obfName});
-        field.setAccessible(true);
+    private static Object getField(Object object, Field field) throws Exception {
         return field.get(object);
     }
 
-    private static void setField(Object object, String deobfName, String srgName, String obfName, Object value) throws Exception {
-        Field field = findField(object.getClass(), new String[]{deobfName, srgName, obfName});
-        field.setAccessible(true);
+    private static void setField(Object object, Field field, Object value) throws Exception {
         field.set(object, value);
     }
 
-    private static Field findField(Class cls, String[] names) throws NoSuchFieldException {
+    private static Field findField(Class cls, String[] names) {
         NoSuchFieldException last = null;
         for (int i = 0; i < names.length; i++) {
             try {
-                return findField(cls, names[i]);
+                Field field = findField(cls, names[i]);
+                field.setAccessible(true);
+                return field;
             } catch (NoSuchFieldException e) {
                 last = e;
             }
         }
-        throw last == null ? new NoSuchFieldException() : last;
+        RuntimeException runtimeException = new RuntimeException("Failed to find field");
+        runtimeException.initCause(last == null ? new NoSuchFieldException() : last);
+        throw runtimeException;
     }
 
     private static Field findField(Class cls, String name) throws NoSuchFieldException {
@@ -127,11 +137,10 @@ public class BookControl extends AbstractControl<Object> {
         throw new NoSuchFieldException(name);
     }
 
-    private static Method getMethod(Object object, String deobfName, String srgName, String obfName, Class[] argTypes) throws Exception {
-        Class current = object.getClass();
+    private static Method findMethod(Class cls, String[] names, Class[] argTypes) {
+        Class current = cls;
         Exception last = null;
         while (current != null) {
-            String[] names = new String[]{deobfName, srgName, obfName};
             for (int i = 0; i < names.length; i++) {
                 try {
                     Method method = current.getDeclaredMethod(names[i], argTypes);
@@ -143,6 +152,8 @@ public class BookControl extends AbstractControl<Object> {
             }
             current = current.getSuperclass();
         }
-        throw last == null ? new NoSuchMethodException() : last;
+        RuntimeException runtimeException = new RuntimeException("Failed to find method");
+        runtimeException.initCause(last == null ? new NoSuchMethodException() : last);
+        throw runtimeException;
     }
 }
