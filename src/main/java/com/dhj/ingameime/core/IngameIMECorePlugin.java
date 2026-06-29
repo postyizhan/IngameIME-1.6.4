@@ -6,11 +6,6 @@ import java.util.Map;
 
 public class IngameIMECorePlugin implements IFMLLoadingPlugin {
     @Override
-    public String[] getLibraryRequestClass() {
-        return null;
-    }
-
-    @Override
     public String[] getASMTransformerClass() {
         return new String[]{"com.dhj.ingameime.core.IngameIMETransformer"};
     }
