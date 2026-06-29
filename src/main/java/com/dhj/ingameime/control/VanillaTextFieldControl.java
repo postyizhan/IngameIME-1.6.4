@@ -35,11 +35,6 @@ public class VanillaTextFieldControl<T> extends AbstractControl<T> {
     }
 
     @Override
-    public void writeText(String text) throws IOException {
-        writeRawText(controlObject, text);
-    }
-
-    @Override
     public boolean isVisible() {
         try {
             return ((Boolean) call(controlObject, GET_VISIBLE)).booleanValue();
