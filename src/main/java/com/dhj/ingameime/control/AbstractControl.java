@@ -1,5 +1,6 @@
 package com.dhj.ingameime.control;
 
+import com.dhj.ingameime.IngameIME_Forge;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
@@ -9,22 +10,35 @@ import java.awt.Point;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.logging.Level;
 
 public abstract class AbstractControl<T> implements IControl {
-    private static Method keyTyped;
-    static {
+    /**
+     * GuiScreen.keyTyped 是全项目唯一保留反射的入口。
+     *
+     * 不用 AccessTransformer 放宽它：GuiScreen 的大量子类各自以 protected 覆写 keyTyped，
+     * 把父类改成 public 会让 dev 依赖重编译时因“缩小可见性”而失败。而且这只是兜底
+     * 路径（没有具体 control 时逐字符喂给当前界面），句柄静态缓存一次，开销可忽略。
+     */
+    private static final Method KEY_TYPED = findKeyTyped();
+
+    private static Method findKeyTyped() {
         try {
+            Method method;
             try {
-                keyTyped = GuiScreen.class.getDeclaredMethod("keyTyped", char.class, int.class);
+                method = GuiScreen.class.getDeclaredMethod("keyTyped", char.class, int.class);
             } catch (NoSuchMethodException ignored) {
-                keyTyped = GuiScreen.class.getDeclaredMethod("func_73869_a", char.class, int.class);
+                method = GuiScreen.class.getDeclaredMethod("func_73869_a", char.class, int.class);
             }
-            keyTyped.setAccessible(true);
-        } catch (Exception e) {
-            RuntimeException runtimeException = new RuntimeException("Failed to invoke GuiScreen.keyTyped", e);
-            throw runtimeException;
+            method.setAccessible(true);
+            return method;
+        } catch (Throwable t) {
+            // 不抛异常：静态初始化失败会级联成 NoClassDefFoundError，比降级难排查得多。
+            IngameIME_Forge.LOG.log(Level.SEVERE, "Failed to locate GuiScreen.keyTyped, fallback text input disabled", t);
+            return null;
         }
     }
+
     protected final T controlObject;
 
     public AbstractControl(T controlObject) {
@@ -42,11 +56,12 @@ public abstract class AbstractControl<T> implements IControl {
     }
 
     public static void writeCurrentScreenText(String text) {
+        if (KEY_TYPED == null) return;
         GuiScreen screen = Minecraft.getMinecraft().currentScreen;
         if (screen == null || text == null) return;
         try {
             for (int i = 0; i < text.length(); i++) {
-                keyTyped.invoke(screen, Character.valueOf(text.charAt(i)), Integer.valueOf(Keyboard.KEY_NONE));
+                KEY_TYPED.invoke(screen, Character.valueOf(text.charAt(i)), Integer.valueOf(Keyboard.KEY_NONE));
             }
         } catch (InvocationTargetException e) {
             throw new RuntimeException(e);

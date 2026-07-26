@@ -64,13 +64,13 @@ public class WidgetCandidateList extends Widget {
         for (String s : Candidates) {
             drawItem.setIndex(index++);
             drawItem.setText(s);
+            int entryWidth = drawItem.getTotalWidth();
             boolean isSelected = (index - 1) == (Selected + 1);
             if (isSelected) {
-                int entryWidth = drawItem.getTotalWidth();
                 drawRect(drawX, Y, drawX + entryWidth, Y + Height + (Padding * 2), Config.SelectedBackgroundColor);
             }
             drawItem.draw(drawX, drawY, TextColor);
-            drawX += drawItem.getTotalWidth();
+            drawX += entryWidth;
         }
     }
 
@@ -78,9 +78,12 @@ public class WidgetCandidateList extends Widget {
         private final Minecraft mc = Minecraft.getMinecraft();
         private String text = "";
         private int index = 0;
+        /** 序号区宽度与字体无关索引变化，每帧重算 getStringWidth("00") 没意义。-1 表示待缓存。 */
+        private int indexAreaWidth = -1;
 
         private int getIndexAreaWidth() {
-            return mc.fontRenderer.getStringWidth("00") + 5;
+            if (indexAreaWidth < 0) indexAreaWidth = mc.fontRenderer.getStringWidth("00") + 5;
+            return indexAreaWidth;
         }
 
         void setText(String text) {

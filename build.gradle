@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    // 必须声明在 ForgeGradle 之前:FG 创建 minecraft 扩展时要引用该插件的类。
+    id 'net.minecraftforge.accesstransformers' version '2.0.0'
     id 'net.minecraftforge.gradle' version "7.0.28"
     id("net.minecraftforge.renamer") version "1.1.2"
 }
@@ -34,6 +36,13 @@ repositories {
 
 minecraft {
     mappings channel: 'snapshot', version: '20130918-1.6.3'
+
+    // 放宽原版成员访问,取代运行期反射。详见 at/accesstransformer.cfg 的注释。
+    // 必须用 file(...):直接传字符串会被解析成第一个 sourceSet 的 resources 目录
+    // (这里是 src/launchPatch/resources/),静默失效。
+    // 放在 at/ 而非 src/main/resources/META-INF/:避免被打进 mod jar——FML 9.11 不认它,
+    // 运行期放宽由 IngameIMETransformer 负责。
+    accessTransformer.from file('at/accesstransformer.cfg')
 
     runs {
         register('client') {
@@ -100,3 +109,4 @@ renamer.classes(tasks.named('jar', Jar)) {
 
     archiveClassifier = 'srg'
 }
+

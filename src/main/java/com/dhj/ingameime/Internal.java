@@ -8,6 +8,8 @@ import org.lwjgl.LWJGLUtil;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.Display;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -39,19 +41,37 @@ public class Internal {
     private static final Queue<Runnable> CALLBACK_QUEUE = new ConcurrentLinkedQueue<Runnable>();
     private static final Queue<CommitText> COMMIT_QUEUE = new ConcurrentLinkedQueue<CommitText>();
     private static final long CONTROL_TYPED_SEQUENCE_TIMEOUT_MS = 1200L;
+    /** 复用的 PreEditRect 与上次下发的值，用于避开每帧重复的 JNI 调用与原生内存分配。 */
+    private static PreEditRect preEditRect = null;
+    private static int lastRectX = Integer.MIN_VALUE;
+    private static int lastRectY = Integer.MIN_VALUE;
+    private static int lastRectWidth = Integer.MIN_VALUE;
+    private static int lastRectHeight = Integer.MIN_VALUE;
     private static Object controlTypedSequenceField = null;
     private static StringBuilder controlTypedSequence = new StringBuilder();
     private static long controlTypedSequenceStartedAt = 0L;
 
+    /**
+     * 把打包在 jar 里的原生库释放到临时目录并加载。
+     *
+     * 用固定文件名而不是 createTempFile：Windows 上 System.load 会一直持有文件句柄，
+     * deleteOnExit 删不掉，旧实现会在 %TEMP% 里每启动一次就留下一个 1~2MB 的 dll。
+     * 固定名 + 已存在则复用（写入失败往往意味着文件正被另一个实例占用）。
+     */
     private static void tryLoadLibrary(String libName) {
         if (LIBRARY_LOADED) return;
         InputStream lib = null;
         try {
             lib = IngameIME.class.getClassLoader().getResourceAsStream(libName);
             if (lib == null) throw new RuntimeException("Required library resource does not exist");
-            Path path = Files.createTempFile("IngameIME-Native", ".dll");
-            path.toFile().deleteOnExit();
-            Files.copy(lib, path, StandardCopyOption.REPLACE_EXISTING);
+            Path path = new File(System.getProperty("java.io.tmpdir"), "IngameIME-Native-" + libName).toPath();
+            try {
+                Files.copy(lib, path, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                // 写不进去通常是已有其他实例加载了它；只要文件在就继续试着加载。
+                if (!Files.exists(path)) throw e;
+                IngameIME_Forge.LOG.fine("Reusing existing native library at " + path);
+            }
             System.load(path.toString());
             LIBRARY_LOADED = true;
             IngameIME_Forge.LOG.info("Library [" + libName + "] has loaded!");
@@ -108,6 +128,7 @@ public class Internal {
         CALLBACK_QUEUE.clear();
         COMMIT_QUEUE.clear();
         clearOverlayState();
+        resetPreEditRectCache();
         if (InputCtx == null) return;
         IngameIME_Forge.logVerboseInfo("Destroying InputContext contextGeneration={}, activationGeneration={}", Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION));
         try {
@@ -185,7 +206,6 @@ public class Internal {
         }
 
         registerCallbacks();
-        System.gc();
     }
 
     private static void registerCallbacks() {
@@ -314,9 +334,11 @@ public class Internal {
             int scaledHeight = scaled.getScaledHeight();
             if (scaledWidth <= 0 || scaledHeight <= 0) return;
             if (x < 0 || y < 0) {
-                IngameIME_Forge.logVerboseInfo("Skipped PreEditRect update for invalid gui=({},{} {}x{}) scaled={}x{} display={}x{}",
-                        Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(width), Integer.valueOf(height),
-                        Integer.valueOf(scaledWidth), Integer.valueOf(scaledHeight), Integer.valueOf(mc.displayWidth), Integer.valueOf(mc.displayHeight));
+                if (Config.VerboseLog) {
+                    IngameIME_Forge.logVerboseInfo("Skipped PreEditRect update for invalid gui=({},{} {}x{}) scaled={}x{} display={}x{}",
+                            Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(width), Integer.valueOf(height),
+                            Integer.valueOf(scaledWidth), Integer.valueOf(scaledHeight), Integer.valueOf(mc.displayWidth), Integer.valueOf(mc.displayHeight));
+                }
                 return;
             }
 
@@ -332,18 +354,49 @@ public class Internal {
             int nativeRight = scaleGuiToDisplayCeil(guiRight, scaledWidth, mc.displayWidth);
             int nativeBottom = scaleGuiToDisplayCeil(guiBottom, scaledHeight, mc.displayHeight);
 
-            PreEditRect rect = new PreEditRect();
-            rect.setX(nativeLeft);
-            rect.setY(nativeTop);
-            rect.setWidth(Math.max(1, nativeRight - nativeLeft));
-            rect.setHeight(Math.max(1, nativeBottom - nativeTop));
-            InputCtx.setPreEditRect(rect);
-            IngameIME_Forge.logVerboseInfo("Updated PreEditRect gui=({},{} {}x{}) scaled={}x{} display={}x{} native=({},{} {}x{})",
-                    Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(width), Integer.valueOf(height),
-                    Integer.valueOf(scaledWidth), Integer.valueOf(scaledHeight), Integer.valueOf(mc.displayWidth), Integer.valueOf(mc.displayHeight),
-                    Integer.valueOf(rect.getX()), Integer.valueOf(rect.getY()), Integer.valueOf(rect.getWidth()), Integer.valueOf(rect.getHeight()));
+            int nativeWidth = Math.max(1, nativeRight - nativeLeft);
+            int nativeHeight = Math.max(1, nativeBottom - nativeTop);
+
+            // 矩形未变就不下发：这个方法游戏中每帧多次被调（渲染钩子 + tick 末尾），
+            // setPreEditRect 是 JNI 调用，无条件转发是纯浪费。
+            if (nativeLeft == lastRectX && nativeTop == lastRectY
+                    && nativeWidth == lastRectWidth && nativeHeight == lastRectHeight) {
+                return;
+            }
+
+            // 复用同一个 SWIG 对象：旧实现每帧 new PreEditRect()，原生内存只靠 finalize() 回收。
+            if (preEditRect == null) preEditRect = new PreEditRect();
+            preEditRect.setX(nativeLeft);
+            preEditRect.setY(nativeTop);
+            preEditRect.setWidth(nativeWidth);
+            preEditRect.setHeight(nativeHeight);
+            InputCtx.setPreEditRect(preEditRect);
+
+            lastRectX = nativeLeft;
+            lastRectY = nativeTop;
+            lastRectWidth = nativeWidth;
+            lastRectHeight = nativeHeight;
+
+            if (Config.VerboseLog) {
+                IngameIME_Forge.logVerboseInfo("Updated PreEditRect gui=({},{} {}x{}) scaled={}x{} display={}x{} native=({},{} {}x{})",
+                        Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(width), Integer.valueOf(height),
+                        Integer.valueOf(scaledWidth), Integer.valueOf(scaledHeight), Integer.valueOf(mc.displayWidth), Integer.valueOf(mc.displayHeight),
+                        Integer.valueOf(nativeLeft), Integer.valueOf(nativeTop), Integer.valueOf(nativeWidth), Integer.valueOf(nativeHeight));
+            }
         } catch (Throwable t) {
             IngameIME_Forge.LOG.log(Level.WARNING, "Failed to update IME preedit rect", t);
+        }
+    }
+
+    /** 丢弃缓存的 PreEditRect 与去重状态。InputContext 重建时必须调用。 */
+    private static void resetPreEditRectCache() {
+        lastRectX = lastRectY = lastRectWidth = lastRectHeight = Integer.MIN_VALUE;
+        if (preEditRect != null) {
+            try {
+                preEditRect.delete();
+            } catch (Throwable ignored) {
+            }
+            preEditRect = null;
         }
     }
 
@@ -747,6 +800,8 @@ public class Internal {
             ACTIVATION_GENERATION++;
             CALLBACK_QUEUE.clear();
             COMMIT_QUEUE.clear();
+            // 重新激活后原生侧可能已丢弃旧矩形，强制下一帧重发。
+            lastRectX = lastRectY = lastRectWidth = lastRectHeight = Integer.MIN_VALUE;
             InputCtx.setActivated(true);
             ACTIVATED = true;
             GAMEPLAY_INACTIVE_LOGGED = false;

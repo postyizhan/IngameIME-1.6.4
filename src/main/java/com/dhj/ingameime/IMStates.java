@@ -12,12 +12,14 @@ public enum IMStates implements IMEventHandler {
     Disabled {
         @Override
         public IMStates onScreenOpen(Object screen) {
-            if (screen instanceof GuiEditSign || hasClassName(screen, "axy")) {
+            // 只用 instanceof：进到这里的类已经被 FML 的 DeobfuscationTransformer 重映射为 SRG 名，
+            // 旧代码额外比对的混淆名(axy/axf)永远不会命中。
+            if (screen instanceof GuiEditSign) {
                 setControl(new SignControl(screen), false);
                 Internal.setActivated(true);
                 return OpenedInternal;
             }
-            if (screen instanceof GuiScreenBook || hasClassName(screen, "axf")) {
+            if (screen instanceof GuiScreenBook) {
                 setControl(new BookControl(screen), false);
                 Internal.setActivated(true);
                 return OpenedInternal;
@@ -144,10 +146,6 @@ public enum IMStates implements IMEventHandler {
 
     public static boolean isControlObject(Object controlObject, boolean isOverlay) {
         return isOverlay ? OverlayControl.getControlObject() == controlObject : CommonControl.getControlObject() == controlObject;
-    }
-
-    private static boolean hasClassName(Object object, String name) {
-        return object != null && name.equals(object.getClass().getName());
     }
 
     public static IControl getActiveControl() {
