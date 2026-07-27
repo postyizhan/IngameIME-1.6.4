@@ -3,6 +3,7 @@ package com.dhj.ingameime;
 import com.dhj.ingameime.config.Config;
 import com.dhj.ingameime.control.IControl;
 import com.dhj.ingameime.gui.OverlayScreen;
+import net.minecraft.GuiScreen;
 import net.minecraft.Minecraft;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -43,9 +44,9 @@ public class ClientProxy implements IMEventHandler {
     }
 
     public void drawOverlay() {
-        Minecraft mc = Minecraft.getMinecraft();
+        GuiScreen screen = ActiveScreen.get();
         boolean preeditActive = Screen.PreEdit.isActive();
-        boolean hasScreen = mc != null && mc.currentScreen != null;
+        boolean hasScreen = screen != null;
         boolean updatedPreEditRect = updateNativePreEditRectFromActiveControl();
         boolean shouldDraw = (updatedPreEditRect && hasScreen) || (preeditActive && hasScreen);
         if (preeditActive) {
@@ -55,7 +56,7 @@ public class ClientProxy implements IMEventHandler {
                 IngameIME_Fish.logVerboseInfo("Overlay draw check: shouldDraw={}, updatedRect={}, hasScreen={}, overlayActive={}, activated={}, screen={}, pos=({},{}), size={}x{}, content='{}', cursor={}",
                         Boolean.valueOf(shouldDraw), Boolean.valueOf(updatedPreEditRect), Boolean.valueOf(hasScreen),
                         Boolean.valueOf(Screen.isActive()), Boolean.valueOf(Internal.getActivated()),
-                        hasScreen ? mc.currentScreen.getClass().getName() : "null",
+                        hasScreen ? screen.getClass().getName() : "null",
                         Integer.valueOf(Screen.PreEdit.X), Integer.valueOf(Screen.PreEdit.Y),
                         Integer.valueOf(Screen.PreEdit.Width), Integer.valueOf(Screen.PreEdit.Height),
                         Screen.PreEdit.getContentForDebug(), Integer.valueOf(Screen.PreEdit.getCursorForDebug()));
@@ -89,10 +90,9 @@ public class ClientProxy implements IMEventHandler {
     }
 
     private void clientTickEnd() {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc.currentScreen == null) {
+        if (!ActiveScreen.isOpen()) {
             if (Internal.getActivated()) {
-                IngameIME_Fish.logDebugInfo("Force deactivating IME because currentScreen is null");
+                IngameIME_Fish.logDebugInfo("Force deactivating IME because no input screen is open");
                 onScreenClose();
             }
             Internal.ensureInactiveForGameplay();
@@ -156,7 +156,7 @@ public class ClientProxy implements IMEventHandler {
     }
 
     public static boolean hasOpenScreen() {
-        return Minecraft.getMinecraft().currentScreen != null;
+        return ActiveScreen.isOpen();
     }
 
     private static void changeState(IMEventHandler newEventHandler) {

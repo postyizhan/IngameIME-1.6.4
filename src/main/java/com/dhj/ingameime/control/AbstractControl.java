@@ -1,8 +1,8 @@
 package com.dhj.ingameime.control;
 
+import com.dhj.ingameime.ActiveScreen;
 import com.dhj.ingameime.IngameIME_Fish;
 import com.dhj.ingameime.mixin.GuiScreenAccessor;
-import net.minecraft.Minecraft;
 import net.minecraft.FontRenderer;
 import net.minecraft.GuiScreen;
 import org.lwjgl.input.Keyboard;
@@ -31,7 +31,8 @@ public abstract class AbstractControl<T> implements IControl {
      * 兜底文本输入：没有具体 control 时，把提交的文本逐字符喂给当前界面。
      */
     public static void writeCurrentScreenText(String text) {
-        GuiScreen screen = Minecraft.getMinecraft().currentScreen;
+        // 用 ActiveScreen 而非 currentScreen：MITE 的聊天是 imposed chat，不写 currentScreen。
+        GuiScreen screen = ActiveScreen.get();
         if (screen == null || text == null) return;
         try {
             for (int i = 0; i < text.length(); i++) {

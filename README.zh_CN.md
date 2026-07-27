@@ -127,6 +127,7 @@ config/ingameime.json
 | `MinecraftMixin` | `displayGuiScreen` HEAD/RETURN | 界面关闭/打开时驱动输入法状态机。 |
 | `MinecraftMixin` | `toggleFullscreen` HEAD/RETURN | 销毁并重建输入上下文，因为 HWND 会变。 |
 | `MinecraftMixin` | `runTick` RETURN | 客户端 tick 末尾：排空回调/提交队列，轮询开关键与鼠标移动。 |
+| `MinecraftImposedChatMixin` | `openChat`、`closeImposedChat` | MITE 的聊天生命周期（见下文）。 |
 | `EntityRendererMixin` | `updateCameraAndRender` RETURN | 绘制预编辑/候选覆盖层。 |
 | `GuiTextFieldMixin` | `setFocused` HEAD | 跟踪焦点变化以激活/停用输入法。 |
 | `GuiTextFieldMixin` | `textboxKeyTyped` HEAD | 吞掉输入法送来的按键名序列。 |
@@ -146,6 +147,18 @@ config/ingameime.json
 在 1.6.4 中该调用点位于 `Display.update()` **之后**，也就是缓冲交换之后。改为注入
 `EntityRenderer.updateCameraAndRender()` 的 RETURN，覆盖层紧跟在当前界面绘制之后、
 且仍在交换之前，因此必然可见。
+
+### MITE 的 imposed chat
+
+MITE 的聊天不走 `displayGuiScreen()`。`Minecraft.openChat(GuiChat)` 把界面写进
+单独的 `imposed_gui_chat` 字段并直接调 `setWorldAndResolution`，关闭则走
+`closeImposedChat()`，**全程不写 `currentScreen`**。
+
+于是所有以 `currentScreen != null` 作判据的地方，在聊天打开时都误判为
+「没有界面」，导致聊天框完全用不了输入法：状态机提前 return、
+tick 末尾每帧把输入法强制按死、覆盖层也不绘制。`ActiveScreen` 取
+`currentScreen` 与 `imposed_gui_chat` 的并集，`MinecraftImposedChatMixin` 补上
+`displayGuiScreen` 对聊天不会发出的开关通知。
 
 ## 关于运行期名称映射
 

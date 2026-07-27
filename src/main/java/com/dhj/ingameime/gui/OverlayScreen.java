@@ -1,5 +1,6 @@
 package com.dhj.ingameime.gui;
 
+import com.dhj.ingameime.ActiveScreen;
 import com.dhj.ingameime.Internal;
 import com.dhj.ingameime.config.Config;
 import net.minecraft.Minecraft;
@@ -12,7 +13,7 @@ public class OverlayScreen extends Widget {
 
     @Override
     public boolean isActive() {
-        return Minecraft.getMinecraft().currentScreen != null && Internal.getActivated();
+        return ActiveScreen.isOpen() && Internal.getActivated();
     }
 
     @Override

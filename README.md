@@ -130,6 +130,7 @@ and no runtime reflection against Minecraft members.
 | `MinecraftMixin` | `displayGuiScreen` HEAD/RETURN | Drive the IME state machine on screen close/open. |
 | `MinecraftMixin` | `toggleFullscreen` HEAD/RETURN | Destroy and recreate the input context, since the HWND changes. |
 | `MinecraftMixin` | `runTick` RETURN | Client tick end: drain callback/commit queues, poll toggle key and mouse move. |
+| `MinecraftImposedChatMixin` | `openChat`, `closeImposedChat` | MITE's chat lifecycle (see below). |
 | `EntityRendererMixin` | `updateCameraAndRender` RETURN | Draw the preedit/candidate overlay. |
 | `GuiTextFieldMixin` | `setFocused` HEAD | Track focus changes to activate/deactivate the IME. |
 | `GuiTextFieldMixin` | `textboxKeyTyped` HEAD | Suppress IME-emitted key-name sequences. |
@@ -153,6 +154,20 @@ The original Forge port injected before `checkGLError("Post render")` in
 `Display.update()`, i.e. after the buffer swap. Injecting at the RETURN of
 `EntityRenderer.updateCameraAndRender()` instead puts the overlay right after the
 current screen is drawn and still before the swap, so it is reliably visible.
+
+### MITE's imposed chat
+
+MITE does not open chat through `displayGuiScreen()`. `Minecraft.openChat(GuiChat)`
+writes the screen into a separate `imposed_gui_chat` field and calls
+`setWorldAndResolution` directly; closing goes through `closeImposedChat()`.
+`currentScreen` is never touched.
+
+So anything keyed on `currentScreen != null` treats chat as "no screen open",
+which disabled the IME in chat entirely: the state machine returned early, the
+tick handler forced the context inactive every tick, and the overlay refused to
+draw. `ActiveScreen` resolves the union of `currentScreen` and `imposed_gui_chat`,
+and `MinecraftImposedChatMixin` supplies the open/close notifications that
+`displayGuiScreen` never sends for chat.
 
 ## Notes on the runtime name mapping
 
