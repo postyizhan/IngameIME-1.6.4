@@ -135,6 +135,7 @@ and no runtime reflection against Minecraft members.
 | `GuiTextFieldMixin` | `textboxKeyTyped` HEAD | Suppress IME-emitted key-name sequences. |
 | `GuiContainerCreativeMixin` | `keyTyped` HEAD | Arm control-key detection for the creative search box. |
 | `ChatAllowedCharactersMixin` | `isAllowedCharacter`, `filerAllowedCharacters` | Allow non-ASCII text while rejecting control characters. |
+| `FontRendererMixin` | `getCharWidth`, `renderStringAtPos` | Keep CJK on the unicode-glyph path (see below). |
 | `GuiScreenAccessor` | `@Invoker` on `keyTyped` | Fallback path that feeds committed text to the current screen. |
 
 `ingameime.accesswidener` widens the private fields that the controls read for
@@ -166,13 +167,33 @@ Note that MITE uses a flat `net.minecraft.*` package: it is
 
 ## Troubleshooting
 
-**`ArrayIndexOutOfBoundsException` in `FontRenderer.getCharWidth` on the main menu or language screen**
+**`ArrayIndexOutOfBoundsException` in `FontRenderer.getCharWidth` / `renderDefaultChar`**
 
-Not caused by this mod — an unmodified example mod crashes the same way in the
-same dev environment. FishModLoader replaces `ChatAllowedCharacters` with a
-large charset that includes CJK (`fix.AllowedCharFix` loads `font.txt`), and
-`getCharWidth` indexes a 256-entry `charWidth` array with the position of the
-character in that charset.
+Fixed by `FontRendererMixin`. If you see it again, that mixin failed to apply.
+
+The cause: vanilla `FontRenderer` resolves a character by its index in
+`ChatAllowedCharacters.allowedCharacters`, then uses that index against a
+256-entry `charWidth[]` and the `ascii.png` atlas; a negative index falls through
+to the unicode-glyph path. Vanilla's `font.txt` is exactly 144 characters, so CJK
+always missed and rendered via `unicode_page_XX.png`.
+
+FishModLoader's `fix.AllowedCharFix` swaps in its own `font.txt` — the same first
+144 characters plus roughly 28,000 CJK ones. CJK then *does* resolve to an index,
+so indices 144-223 silently drew the wrong glyph from `ascii.png`, and anything at
+224 or above overflowed:
+
+```text
+java.lang.ArrayIndexOutOfBoundsException: Index 16469 out of bounds for length 256
+```
+
+(`中` sits at index 16437 in FML's `font.txt`; 16437 + 32 = 16469.)
+
+This fires on this mod's candidate window and equally on stock screens such as the
+language list, the resource-pack list, and the create-world name field. The mixin
+redirects both `indexOf` call sites so any index at or beyond 144 returns `-1`,
+restoring the unicode-glyph path. ASCII and Latin-1 behaviour is untouched, and
+the game jar ships all 222 `unicode_page_*.png` files plus `glyph_sizes.bin`, so
+CJK renders correctly.
 
 **The candidate window does not appear**
 

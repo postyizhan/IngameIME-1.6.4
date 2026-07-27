@@ -1,7 +1,6 @@
 package com.dhj.ingameime.gui;
 
 import com.dhj.ingameime.config.Config;
-import net.minecraft.Minecraft;
 
 import java.util.List;
 
@@ -75,14 +74,13 @@ public class WidgetCandidateList extends Widget {
     }
 
     private static final class CandidateEntry {
-        private final Minecraft mc = Minecraft.getMinecraft();
         private String text = "";
         private int index = 0;
         /** 序号区宽度与字体无关索引变化，每帧重算 getStringWidth("00") 没意义。-1 表示待缓存。 */
         private int indexAreaWidth = -1;
 
         private int getIndexAreaWidth() {
-            if (indexAreaWidth < 0) indexAreaWidth = mc.fontRenderer.getStringWidth("00") + 5;
+            if (indexAreaWidth < 0) indexAreaWidth = OverlayFont.getStringWidth("00") + 5;
             return indexAreaWidth;
         }
 
@@ -95,7 +93,7 @@ public class WidgetCandidateList extends Widget {
         }
 
         int getTextWidth() {
-            return mc.fontRenderer.getStringWidth(text);
+            return OverlayFont.getStringWidth(text);
         }
 
         int getTotalWidth() {
@@ -103,18 +101,18 @@ public class WidgetCandidateList extends Widget {
         }
 
         int getTotalHeight() {
-            return mc.fontRenderer.FONT_HEIGHT;
+            return OverlayFont.fontHeight();
         }
 
         void draw(int x, int y, int textColor) {
             int offsetX = x + 2;
             String idx = Integer.toString(index);
             int indexAreaW = getIndexAreaWidth();
-            int idxTextW = mc.fontRenderer.getStringWidth(idx);
+            int idxTextW = OverlayFont.getStringWidth(idx);
             int centeredX = offsetX + (indexAreaW - idxTextW) / 2;
-            mc.fontRenderer.drawString(idx, centeredX, y, Config.IndexColor);
+            OverlayFont.drawString(idx, centeredX, y, Config.IndexColor);
             offsetX += indexAreaW;
-            mc.fontRenderer.drawString(text, offsetX, y, textColor);
+            OverlayFont.drawString(text, offsetX, y, textColor);
         }
     }
 }

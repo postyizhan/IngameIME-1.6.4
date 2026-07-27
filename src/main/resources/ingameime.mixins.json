@@ -10,7 +10,8 @@
     "EntityRendererMixin",
     "GuiTextFieldMixin",
     "GuiContainerCreativeMixin",
-    "ChatAllowedCharactersMixin"
+    "ChatAllowedCharactersMixin",
+    "FontRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

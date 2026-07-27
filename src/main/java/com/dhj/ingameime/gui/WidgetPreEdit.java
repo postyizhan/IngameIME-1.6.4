@@ -3,7 +3,6 @@ package com.dhj.ingameime.gui;
 import com.dhj.ingameime.ClientProxy;
 import com.dhj.ingameime.config.Config;
 import net.minecraft.Minecraft;
-import net.minecraft.FontRenderer;
 import net.minecraft.ScaledResolution;
 
 public class WidgetPreEdit extends Widget {
@@ -40,9 +39,8 @@ public class WidgetPreEdit extends Widget {
         if (!isDirty) return;
         updateThemeColors();
         if (isActive()) {
-            FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-            Width = font.getStringWidth(Content) + CursorWidth;
-            Height = font.FONT_HEIGHT;
+            Width = OverlayFont.getStringWidth(Content) + CursorWidth;
+            Height = OverlayFont.fontHeight();
         } else {
             Width = Height = 0;
         }
@@ -72,7 +70,6 @@ public class WidgetPreEdit extends Widget {
         keepInsideDisplay();
         super.draw();
 
-        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
         String beforeCursor = "";
         String afterCursor = "";
         if (Content != null && Cursor >= 0 && Cursor <= Content.length()) {
@@ -82,9 +79,9 @@ public class WidgetPreEdit extends Widget {
             beforeCursor = Content;
         }
 
-        int x = font.drawString(beforeCursor, X + Padding, Y + Padding, TextColor);
+        int x = OverlayFont.drawString(beforeCursor, X + Padding, Y + Padding, TextColor);
         drawRect(x + 1, Y + Padding, x + 2, Y + Padding + Height, Config.CursorColor);
-        font.drawString(afterCursor, x + CursorWidth, Y + Padding, TextColor);
+        OverlayFont.drawString(afterCursor, x + CursorWidth, Y + Padding, TextColor);
     }
 
     private int getFloatingY() {

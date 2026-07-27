@@ -2,8 +2,6 @@ package com.dhj.ingameime.gui;
 
 import com.dhj.ingameime.config.Config;
 import ingameime.InputMode;
-import net.minecraft.Minecraft;
-import net.minecraft.FontRenderer;
 
 public class WidgetInputMode extends Widget {
     public final long ActiveTime = 3000;
@@ -35,10 +33,13 @@ public class WidgetInputMode extends Widget {
     public void layout() {
         if (!isDirty) return;
         updateThemeColors();
-        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-        Height = font.FONT_HEIGHT;
-        Width = font.getStringWidth(Mode == InputMode.AlphaNumeric ? Config.AlphaModeText : Config.NativeModeText);
+        Height = OverlayFont.fontHeight();
+        Width = OverlayFont.getStringWidth(modeText());
         super.layout();
+    }
+
+    private String modeText() {
+        return Mode == InputMode.AlphaNumeric ? Config.AlphaModeText : Config.NativeModeText;
     }
 
     @Override
@@ -46,9 +47,6 @@ public class WidgetInputMode extends Widget {
         if (!isActive()) return;
         if (isDirty) layout();
         super.draw();
-        Minecraft.getMinecraft().fontRenderer.drawString(
-                Mode == InputMode.AlphaNumeric ? Config.AlphaModeText : Config.NativeModeText,
-                X + Padding, Y + Padding, TextColor
-        );
+        OverlayFont.drawString(modeText(), X + Padding, Y + Padding, TextColor);
     }
 }

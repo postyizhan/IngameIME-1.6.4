@@ -132,6 +132,7 @@ config/ingameime.json
 | `GuiTextFieldMixin` | `textboxKeyTyped` HEAD | 吞掉输入法送来的按键名序列。 |
 | `GuiContainerCreativeMixin` | `keyTyped` HEAD | 为创造搜索框预备控制键检测。 |
 | `ChatAllowedCharactersMixin` | `isAllowedCharacter`、`filerAllowedCharacters` | 放行非 ASCII 文本，同时拒绝控制字符。 |
+| `FontRendererMixin` | `getCharWidth`、`renderStringAtPos` | 让 CJK 走 unicode 字形路径（见下文）。 |
 | `GuiScreenAccessor` | `keyTyped` 的 `@Invoker` | 兜底路径：把提交文本喂给当前界面。 |
 
 `ingameime.accesswidener` 放宽控件定位光标所需的私有字段（`GuiTextField`、
@@ -158,11 +159,30 @@ FishModLoader 在启动时把游戏 jar 由 `official` 重映射为 `named`
 
 ## 疑难排查
 
-**主菜单或语言界面上 `FontRenderer.getCharWidth` 抛 `ArrayIndexOutOfBoundsException`**
+**`FontRenderer.getCharWidth` / `renderDefaultChar` 抛 `ArrayIndexOutOfBoundsException`**
 
-与本模组无关——未改动的示例模组在同一开发环境下会以同样方式崩溃。FishModLoader 用一份
-包含 CJK 的大字符集替换了 `ChatAllowedCharacters`（`fix.AllowedCharFix` 读取 `font.txt`），
-而 `getCharWidth` 用字符在该字符集中的下标去索引仅 256 项的 `charWidth` 数组。
+已由 `FontRendererMixin` 修复。如果又出现，说明该 mixin 未生效。
+
+成因：原版 `FontRenderer` 先取字符在
+`ChatAllowedCharacters.allowedCharacters` 里的下标，再用该下标去索引仅 256 项的
+`charWidth[]` 与 `ascii.png` 图集；下标为负时才落到 unicode 字形路径。
+原版 `font.txt` 恰好 144 个字符，CJK 永远查不到，因此总是经
+`unicode_page_XX.png` 渲染。
+
+但 FishModLoader 的 `fix.AllowedCharFix` 换成了它自己的 `font.txt`——前 144 个字符
+与原版一致，之后追加了约 28000 个 CJK 字符。于是 CJK **能**查到下标：
+下标 144..223 会静默地画成 `ascii.png` 里的错字形；下标 ≥ 224 则直接越界：
+
+```text
+java.lang.ArrayIndexOutOfBoundsException: Index 16469 out of bounds for length 256
+```
+
+（`中` 在 FML `font.txt` 里的下标是 16437，16437 + 32 = 16469。）
+
+这个崩溃既能在本模组的候选框上触发，也能在纯原版界面上触发（语言列表、
+资源包列表、创建世界的名称输入框等）。该 mixin 把两处 `indexOf` 调用重定向，
+下标 ≥ 144 时返回 `-1`，恢复 unicode 字形路径。ASCII/Latin-1 行为完全不变；
+游戏 jar 自带全部 222 张 `unicode_page_*.png` 与 `glyph_sizes.bin`，因此 CJK 能正常出字。
 
 **候选窗不出现**
 
