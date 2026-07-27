@@ -1,9 +1,9 @@
 package com.dhj.ingameime.gui;
 
 import com.dhj.ingameime.config.Config;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.Minecraft;
+import net.minecraft.Gui;
+import net.minecraft.ScaledResolution;
 
 public class Widget extends Gui {
     public int offsetX, offsetY;

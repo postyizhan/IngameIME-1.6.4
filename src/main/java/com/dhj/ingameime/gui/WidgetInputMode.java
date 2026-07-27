@@ -2,8 +2,8 @@ package com.dhj.ingameime.gui;
 
 import com.dhj.ingameime.config.Config;
 import ingameime.InputMode;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.Minecraft;
+import net.minecraft.FontRenderer;
 
 public class WidgetInputMode extends Widget {
     public final long ActiveTime = 3000;

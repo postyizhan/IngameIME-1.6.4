@@ -1,22 +1,22 @@
 package com.dhj.ingameime;
 
 import com.dhj.ingameime.config.Config;
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.SidedProxy;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import java.util.logging.Logger;
+import net.fabricmc.api.ModInitializer;
+import net.xiaoyu233.fml.config.ConfigRegistry;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-@Mod(
-        modid = Tags.MOD_ID,
-        version = Tags.VERSION,
-        name = Tags.MOD_NAME,
-        acceptedMinecraftVersions = "[1.6.4]"
-)
-public class IngameIME_Forge {
-    public static final Logger LOG = Logger.getLogger(Tags.MOD_NAME);
+import java.util.Optional;
 
-    @SidedProxy(clientSide = "com.dhj.ingameime.ClientProxy", serverSide = "com.dhj.ingameime.CommonProxy")
-    public static CommonProxy proxy;
+/**
+ * FishModLoader 入口。
+ *
+ * 原 Forge 版的 @Mod + @SidedProxy + FMLPreInitializationEvent 在这里退化成单个
+ * ModInitializer：本模组是纯客户端模组（fml.mod.json 里 environment=client），
+ * 不需要 CommonProxy/ClientProxy 这套双端分派。
+ */
+public class IngameIME_Fish implements ModInitializer {
+    public static final Logger LOG = LogManager.getLogger(Tags.MOD_NAME);
 
     public static void logDebugInfo(String message, Object... params) {
         if (Config.DebugLog) {
@@ -53,8 +53,15 @@ public class IngameIME_Forge {
         return result.toString();
     }
 
-    @Mod.EventHandler
-    public void preInit(FMLPreInitializationEvent event) {
-        proxy.preInit(event);
+    @Override
+    public Optional<ConfigRegistry> createConfig() {
+        return Optional.of(Config.createRegistry());
+    }
+
+    @Override
+    public void onInitialize() {
+        // 入口在 Minecraft 构造之前触发（见 FML 的 ClientEntrypointMixin），
+        // 此时 Display/HWND 都还不存在，所以只加载原生库，InputContext 首次激活时才创建。
+        ClientProxy.init();
     }
 }

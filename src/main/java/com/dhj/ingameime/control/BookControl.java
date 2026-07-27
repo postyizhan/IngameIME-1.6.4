@@ -1,22 +1,21 @@
 package com.dhj.ingameime.control;
 
-import com.dhj.ingameime.IngameIME_Forge;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.GuiScreenBook;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagString;
+import com.dhj.ingameime.IngameIME_Fish;
+import net.minecraft.Minecraft;
+import net.minecraft.FontRenderer;
+import net.minecraft.GuiScreenBook;
+import net.minecraft.NBTTagList;
+import net.minecraft.NBTTagString;
 
 import java.awt.Point;
 import java.io.IOException;
-import java.util.logging.Level;
 
 /**
  * 成书编辑界面。
  *
  * width 来自 GuiScreen、NBTTagString.data 本来就是 public；其余成员(editingTitle/bookTitle/
  * bookModified/bookImageWidth/bookPages/currPage 与 func_74160_b/updateButtons)
- * 由 AccessTransformer 放宽。func_74160_b 是原版的"向当前页追加文本"，MCP 未给出可读名。
+ * 由 AccessWidener 放宽。func_74160_b 是原版的"向当前页追加文本"，MCP 未给出可读名。
  */
 public class BookControl extends AbstractControl<Object> {
     public BookControl(Object control) {
@@ -79,7 +78,7 @@ public class BookControl extends AbstractControl<Object> {
             int line = Math.max(0, lines.length - 1);
             return new Point(left + 36 + font.getStringWidth(last) + 4, top + 32 + line * font.FONT_HEIGHT);
         } catch (Throwable t) {
-            IngameIME_Forge.LOG.log(Level.WARNING, "Failed to get book cursor position", t);
+            IngameIME_Fish.LOG.warn("Failed to get book cursor position", t);
             return new Point(0, 0);
         }
     }

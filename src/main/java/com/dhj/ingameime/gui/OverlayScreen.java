@@ -2,7 +2,7 @@ package com.dhj.ingameime.gui;
 
 import com.dhj.ingameime.Internal;
 import com.dhj.ingameime.config.Config;
-import net.minecraft.client.Minecraft;
+import net.minecraft.Minecraft;
 import org.lwjgl.opengl.GL11;
 
 public class OverlayScreen extends Widget {

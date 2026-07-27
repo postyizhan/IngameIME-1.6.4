@@ -1,19 +1,18 @@
 package com.dhj.ingameime.control;
 
-import com.dhj.ingameime.IngameIME_Forge;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.inventory.GuiEditSign;
-import net.minecraft.tileentity.TileEntitySign;
+import com.dhj.ingameime.IngameIME_Fish;
+import net.minecraft.Minecraft;
+import net.minecraft.FontRenderer;
+import net.minecraft.GuiEditSign;
+import net.minecraft.TileEntitySign;
 
 import java.awt.Point;
 import java.io.IOException;
-import java.util.logging.Level;
 
 /**
  * 告示牌编辑界面。
  *
- * width/height 来自 GuiScreen，本来就是 public；entitySign/editLine 由 AccessTransformer 放宽。
+ * width/height 来自 GuiScreen，本来就是 public；entitySign/editLine 由 AccessWidener 放宽。
  */
 public class SignControl extends AbstractControl<Object> {
     public SignControl(Object control) {
@@ -64,7 +63,7 @@ public class SignControl extends AbstractControl<Object> {
             int y = screen.height / 4 + 58 + line * 10;
             return new Point(x, y);
         } catch (Throwable t) {
-            IngameIME_Forge.LOG.log(Level.WARNING, "Failed to get sign cursor position", t);
+            IngameIME_Fish.LOG.warn("Failed to get sign cursor position", t);
             Minecraft mc = Minecraft.getMinecraft();
             return new Point(mc.currentScreen != null ? mc.currentScreen.width / 2 : 0,
                     mc.currentScreen != null ? mc.currentScreen.height / 2 : 0);

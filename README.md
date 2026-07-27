@@ -1,8 +1,8 @@
-# IngameIME for Minecraft Forge 1.6.4
+# IngameIME for FishModLoader (Minecraft 1.6.4-MITE)
 
 [English / [简体中文](README.zh_CN.md)]
 
-IngameIME is a client-side mod that brings input method support to Minecraft. This fork ports the core functionality of [IngameIME-1.12.2](https://github.com/DHJComical/IngameIME-1.12.2) to **Minecraft 1.6.4 + Forge 9.11.1.1345**.
+IngameIME is a client-side mod that brings input method support to Minecraft. This fork ports the core functionality of [IngameIME-1.12.2](https://github.com/DHJComical/IngameIME-1.12.2) to **Minecraft 1.6.4-MITE + FishModLoader 3.4.2**.
 
 - **✓** Chinese input
 - **✓** IME candidate window
@@ -15,12 +15,11 @@ IngameIME is a client-side mod that brings input method support to Minecraft. Th
 
 - **Ask IngameIME to render the candidate window and preedit text in-game (default)**
 
-Set this in the config file:
+Set this in `config/ingameime.json`:
 
-```cfg
-uiless {
-    # Config if render in-game candidate list.
-    B:Windows=true
+```json
+"uiless": {
+  "Windows": { "value": true }
 }
 ```
 
@@ -28,243 +27,71 @@ uiless {
 
 - **Use the native Windows candidate window**
 
-Set this in the config file:
-
-```cfg
-uiless {
-    # Config if render in-game candidate list.
-    B:Windows=false
+```json
+"uiless": {
+  "Windows": { "value": false }
 }
 ```
 
 ![](show-2.png)
 
-## Current status
-
-Verified in this port:
-
-- Minecraft Forge 1.6.4 client loads correctly
-- The coremod transformer loads correctly from the jar manifest
-- Windows native IME libraries load correctly
-- TSF/Imm32 input contexts can be created, activated, deactivated, and reused
-- Vanilla `GuiTextField` input works, including chat and the creative-mode search box
-- Sign input works
-- Writable book input works
-- Pinyin/preedit text can be displayed near the caret
-- Candidate windows are rendered in-game by default
-- The IME context is reset when switching between fullscreen and windowed mode
-- Control characters are filtered so ESC/Enter no longer insert abnormal characters into the creative-mode search box
-
-This 1.6.4 MVP **does not include**:
-
-- The theme editor and config GUI from the 1.12.2 version
-- Broad third-party mod text-field compatibility layers
-- Backporting newer mixin resources or the mixin architecture
-
 ## Requirements
 
 - Windows
-- Minecraft `1.6.4`
-- Forge `1.6.4-9.11.1.1345`
-- Java 8, for building and running the legacy Forge client
-
-This project still compiles to Java 7 bytecode:
-
-```text
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
-```
-
-The reason is that Forge 1.6.4 uses ASM 4.1 during mod discovery, which cannot reliably parse Java 8 class files.
+- Minecraft `1.6.4-MITE`
+- FishModLoader `>=3.4.0`
+- Java 17 or newer
 
 ## Build
 
-> This assumes you are using Zulu 8 installed at the default path.
-
-Use Java 8. Do not use Java 21 or newer:
-
 ```bash
-JAVA_HOME='C:/Program Files/Zulu/zulu-8' ./gradlew clean assemble --console=plain --no-daemon
+./gradlew build
 ```
 
 Build output:
 
 ```text
-build/libs/IngameIME-x.x.x-1.6.4.jar
+build/libs/IngameIME-1.0.0.jar
 ```
 
 Launch the development client:
 
 ```bash
-JAVA_HOME='C:/Program Files/Zulu/zulu-8' ./gradlew runClient --console=plain --no-daemon
+./gradlew runClient
 ```
-
-This repository ships a built-in CME patch launcher, so `runClient` / `runServer` work out of the box on Java 8u20 and newer without manually dropping LegacyJavaFixer into `runs/main/client/mods/`. See "CME patch for the dev environment" below.
-
-### CME patch for the dev environment (`src/launchPatch/`)
-
-On JVMs running **Java 8u20 or newer**, the stock 1.6.4 launch chain always dies with:
-
-```text
-java.util.ConcurrentModificationException
-    at java.util.ArrayList$Itr.checkForComodification(ArrayList.java:911)
-    at java.util.ArrayList$Itr.remove(ArrayList.java:875)
-    at net.minecraft.launchwrapper.Launch.launch(Launch.java:114)
-```
-
-Three things combine to cause it:
-
-1. `Launch.launch()` in launchwrapper 1.8 calls `tweaker.acceptOptions(...)` inside the loop body and then `it.remove()` — the iterator stays alive across the callback.
-2. `CoreModManager.sortTweakList()` in 1.6.4 FML performs a bare `Collections.sort(tweakers, cmp)` on exactly the list that iterator is walking.
-3. [JDK-8030848](https://bugs.openjdk.org/browse/JDK-8030848) changed `Collections.sort` in **8u20**: it used to copy into a temporary array, sort, and write back without touching `modCount`; after delegating to `List.sort()`, `ArrayList.sort()` unconditionally does `modCount++` at the end.
-
-So `it.remove()` throws a CME in `checkForComodification()`. The cutoff is 8u20, not "Java 8" — early builds such as 8u5 still run. Forge fixed this in the 1.7.10 era (`sortTweakList` switched to `Arrays.sort` plus `set` write-back); 1.6.4 was already out of maintenance and never got it.
-
-This repository fixes it on the launchwrapper side instead: `src/launchPatch/java/dev/launchfix/CmeSafeLaunch.java` is an equivalent implementation of `Launch` that replaces "hold an iterator across the callback" with "take the head of the list each round, then remove it by reference", so sorting or mutating the list inside a callback is safe. Wiring:
-
-```groovy
-sourceSets.register('launchPatch')
-sourceSets.launchPatch.compileClasspath = sourceSets.main.compileClasspath
-sourceSets.main.runtimeClasspath += sourceSets.launchPatch.output
-
-// inside the run blocks
-environment.put("mainClass", "dev.launchfix.CmeSafeLaunch")
-```
-
-Three details worth knowing:
-
-- **Why the env `mainClass` instead of the run DSL `mainClass`**: slime-launcher's `LegacyDev` only kicks in when the outer main class starts with `net.minecraftforge.legacydev.`. It reads the env `mainClass` to find the real entry point and supplies `--tweakClass`/`--version`/`--assetsDir`. Changing the DSL `mainClass` bypasses the whole legacydev path, dropping `--tweakClass` and falling back to `VanillaTweaker`.
-- **Why append to `main.runtimeClasspath`**: the run task JVM classpath is the slime-launcher tool jar plus `main.runtimeClasspath`. The run DSL `classpath` has **whole-value override** semantics, so using it evicts slime-launcher itself and the run fails with a missing main class `net.minecraftforge.launcher.Main`.
-- **Why a separate sourceSet**: the `jar` task packages `sourceSets.main.output`; the patch lives in `launchPatch` with a separate output directory, so it **never reaches the published jar** (verified). Appending to `runtimeClasspath` only affects run/test, not the `jar` inputs. It also keeps FML from scanning it as a mod class in dev.
-
-**Distribution note**: this patch only covers the dev `runClient`/`runServer`. Players running this mod on a production Forge install with 8u20+ still need [`legacyjavafixer-1.0.jar`](https://github.com/MinecraftForge/LegacyJavaFixer), which patches `sortTweakList` on the FML side — the other end of the same bug.
 
 ## Configuration
 
 The config file is generated at:
 
 ```text
-config/ingameime.cfg
+config/ingameime.json
 ```
 
-The config file uses Forge 1.6.4's `Configuration` format:
+It uses FishModLoader's own JSON config format. Each entry is an object with a
+`value` field and an optional `_comment` describing it. Colors are ARGB
+hexadecimal strings such as `"0xFF000000"` — they are stored as strings because
+values like `0xEBEBEBEB` exceed the range of a signed 32-bit integer and would be
+unreadable in decimal.
 
-- `S:` means string
-- `B:` means boolean, and only `true` or `false` is valid
-- `I:` means integer
-- Colors use ARGB hexadecimal format, for example `0xFF000000`
-
-<details>
-<summary>Full config file example (click to expand)</summary>
-
-```cfg
-# Configuration file
-
-####################
-# api
-####################
-
-api {
-    # The input method API used on Windows.
-    # Available values:
-    # - TextServiceFramework: recommended. Uses TSF and works well with modern Windows IMEs.
-    # - Imm32: legacy IMM32 backend, provided as a compatibility fallback.
-    S:Windows=TextServiceFramework
-}
-
-
-####################
-# debug
-####################
-
-debug {
-    # Whether to print normal debug logs.
-    # Recommended value for daily use: false.
-    # Set to true when troubleshooting.
-    B:DebugLog=false
-
-    # Whether to print more verbose troubleshooting logs.
-    # This records IME callbacks, candidate windows, preedit text, caret positions, and more.
-    # It can produce a large amount of log output.
-    # Recommended value for daily use: false.
-    # Enable it only when you need to submit logs or diagnose an issue.
-    B:VerboseLog=false
-}
-
-
-####################
-# general
-####################
-
-general {
-    # Whether to automatically turn off the input method when the mouse moves.
-    # true: turn off IME after mouse movement.
-    # false: mouse movement does not affect IME state. This is the recommended default.
-    B:TurnOffOnMouseMove=false
-}
-
-
-####################
-# modetext
-####################
-
-modetext {
-    # Text shown for English/alphabet mode.
-    S:AlphaMode=A
-
-    # Text shown for Chinese/native input mode.
-    S:NativeMode=中
-}
-
-
-####################
-# theme
-####################
-
-theme {
-    # Background color for preedit text/candidate windows, in ARGB.
-    S:BackgroundColor=0xEBEBEBEB
-
-    # Border color, in ARGB.
-    S:BorderColor=0x80000000
-
-    # Border width, in game GUI pixels.
-    I:BorderWidth=1
-
-    # Candidate window padding, in game GUI pixels.
-    I:CandidatePadding=5
-
-    # Preedit caret color, in ARGB.
-    S:CursorColor=0xFF000000
-
-    # Candidate index color, in ARGB.
-    S:IndexColor=0xFF555555
-
-    # Generic widget padding, in game GUI pixels.
-    I:Padding=3
-
-    # Background color for the selected candidate item, in ARGB.
-    S:SelectedBackgroundColor=0xEBEBEBEB
-
-    # Text color, in ARGB.
-    S:TextColor=0xFF000000
-}
-
-
-####################
-# uiless
-####################
-
-uiless {
-    # Windows candidate-window rendering mode.
-    # true: default. Ask IngameIME to render the candidate window and preedit text in-game.
-    # false: use the native Windows candidate window while IngameIME still renders preedit text in-game;
-    #        this can be used as a fallback if the in-game candidate window behaves incorrectly.
-    B:Windows=true
-}
-```
-
-</details>
+| Category | Key | Type | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| `api` | `Windows` | string | `TextServiceFramework` | Input method backend. `TextServiceFramework` (recommended) or `Imm32` (legacy fallback). |
+| `uiless` | `Windows` | boolean | `true` | `true` renders the candidate list in-game; `false` uses the native Windows candidate window. |
+| `general` | `TurnOffOnMouseMove` | boolean | `false` | Turn the input method off when the mouse moves. |
+| `modetext` | `AlphaMode` | string | `A` | Indicator text shown in alphanumeric mode. |
+| `modetext` | `NativeMode` | string | `中` | Indicator text shown in native-language mode. |
+| `debug` | `DebugLog` | boolean | `false` | Print normal debug logs. |
+| `debug` | `VerboseLog` | boolean | `false` | Print verbose troubleshooting logs (IME callbacks, candidates, preedit, caret positions). Very noisy. |
+| `theme` | `TextColor` | color | `0xFF000000` | Preedit/candidate text color. |
+| `theme` | `BackgroundColor` | color | `0xEBEBEBEB` | Widget background color. |
+| `theme` | `IndexColor` | color | `0xFF555555` | Candidate index number color. |
+| `theme` | `SelectedBackgroundColor` | color | `0xEBEBEBEB` | Background color of the selected candidate. |
+| `theme` | `CursorColor` | color | `0xFF000000` | Preedit caret color. |
+| `theme` | `BorderColor` | color | `0x80000000` | Widget border color. |
+| `theme` | `Padding` | int | `3` | Widget padding. |
+| `theme` | `CandidatePadding` | int | `5` | Candidate entry padding. |
+| `theme` | `BorderWidth` | int | `1` | Widget border width. Set to `0` to disable the border. |
 
 ## Features
 
@@ -293,29 +120,70 @@ This port includes 1.6.4-specific controls:
 
 When no GUI is open, IngameIME keeps the native input context inactive to prevent Chinese IMEs from swallowing gameplay keys such as WASD.
 
-## Maintainer notes
+## Architecture
 
-- `IngameIMETransformer` replaces newer mixin hooks with LaunchWrapper-era ASM injection.
-- `Internal` is responsible for native library loading, HWND discovery, IME activation state, callback queues, commit filtering, and forced inactive state during gameplay.
-- The controls supported by the current MVP are:
-  - `VanillaTextFieldControl`
-  - `SignControl`
-  - `BookControl`
-- `ChatAllowedCharacters` is patched to allow non-ASCII text while rejecting control characters such as ESC and Enter.
-- Keep generated class files compatible with Java 7. Java 7 bytecode (class version 51) is a hard ceiling because 1.6.4 FML's bundled ASM 4.1 cannot parse Java 8 bytecode (52) and would throw `IllegalArgumentException`, dropping the whole mod. This constraint applies to the **compiled output** only, not to the JDK used to run Gradle.
-- Do not directly introduce the 1.12.2 mixin architecture; the 1.6.4 port should continue using the existing coremod/ASM approach.
-- `src/launchPatch/` serves the dev runtime only and never ends up in the published jar; do not move it into `src/main/`.
+The mod hooks the game through Mixins and an AccessWidener. There is no coremod
+and no runtime reflection against Minecraft members.
+
+| Hook | Location | Purpose |
+| --- | --- | --- |
+| `MinecraftMixin` | `displayGuiScreen` HEAD/RETURN | Drive the IME state machine on screen close/open. |
+| `MinecraftMixin` | `toggleFullscreen` HEAD/RETURN | Destroy and recreate the input context, since the HWND changes. |
+| `MinecraftMixin` | `runTick` RETURN | Client tick end: drain callback/commit queues, poll toggle key and mouse move. |
+| `EntityRendererMixin` | `updateCameraAndRender` RETURN | Draw the preedit/candidate overlay. |
+| `GuiTextFieldMixin` | `setFocused` HEAD | Track focus changes to activate/deactivate the IME. |
+| `GuiTextFieldMixin` | `textboxKeyTyped` HEAD | Suppress IME-emitted key-name sequences. |
+| `GuiContainerCreativeMixin` | `keyTyped` HEAD | Arm control-key detection for the creative search box. |
+| `ChatAllowedCharactersMixin` | `isAllowedCharacter`, `filerAllowedCharacters` | Allow non-ASCII text while rejecting control characters. |
+| `GuiScreenAccessor` | `@Invoker` on `keyTyped` | Fallback path that feeds committed text to the current screen. |
+
+`ingameime.accesswidener` widens the private fields that the controls read for
+caret positioning (`GuiTextField`, `GuiScreenBook`, `GuiEditSign`) plus the two
+private `GuiScreenBook` methods used for book editing.
+
+`Internal` is responsible for native library loading, HWND discovery, IME
+activation state, callback queues, commit filtering, and forced inactive state
+during gameplay.
+
+### Why the overlay is drawn in `updateCameraAndRender`
+
+The original Forge port injected before `checkGLError("Post render")` in
+`Minecraft.runGameLoop()`. In 1.6.4 that call site sits **after**
+`Display.update()`, i.e. after the buffer swap. Injecting at the RETURN of
+`EntityRenderer.updateCameraAndRender()` instead puts the overlay right after the
+current screen is drawn and still before the swap, so it is reliably visible.
+
+## Notes on the runtime name mapping
+
+FishModLoader remaps the game jar `official` → `named` at launch
+(`net.xiaoyu233.fml.relaunch.Launch`), so Minecraft classes and members keep
+readable names at runtime. Mod code is **not** remapped and no refmap is
+generated, which is why the Mixin targets in this repository use plain named
+strings such as `runTick` and `net/minecraft/GuiTextField`.
+
+Note that MITE uses a flat `net.minecraft.*` package: it is
+`net.minecraft.GuiTextField`, not `net.minecraft.client.gui.GuiTextField`.
 
 ## Troubleshooting
 
-**`ConcurrentModificationException` at `net.minecraft.launchwrapper.Launch.launch` on startup**
-You are on 8u20+ and the CME patch launcher is not being used. Check that the run blocks in `build.gradle` still contain `environment.put("mainClass", "dev.launchfix.CmeSafeLaunch")` and that `sourceSets.main.runtimeClasspath += sourceSets.launchPatch.output` is still present.
+**`ArrayIndexOutOfBoundsException` in `FontRenderer.getCharWidth` on the main menu or language screen**
 
-**`runServer` fails with `UnsatisfiedLinkError: no lwjgl in java.library.path`**
-The server run block uses the client `FMLTweaker`. Its `getLaunchTarget()` returns `net.minecraft.client.main.Main`, so `runServer` actually starts the client and dies on the LWJGL native libraries. Use `FMLServerTweaker` instead.
+Not caused by this mod — an unmodified example mod crashes the same way in the
+same dev environment. FishModLoader replaces `ChatAllowedCharacters` with a
+large charset that includes CJK (`fix.AllowedCharFix` loads `font.txt`), and
+`getCharWidth` indexes a 256-entry `charWidth` array with the position of the
+character in that charset.
 
-**FML logs `Unable to read a class file correctly` / `IllegalArgumentException`**
-There is a jar with Java 8+ bytecode on the classpath that ASM 4.1 cannot read. FML skips the entry and continues, which is usually harmless; if the dropped entry is this mod, check whether `-source/-target` was bumped to 1.8.
+**The candidate window does not appear**
+
+Check that `uiless.Windows` is `true`. When it is `false` the native Windows
+candidate window is used instead of the in-game overlay.
+
+**No IME at all, and the log says the native library failed to load**
+
+The mod ships `IngameIME_Java-{x64,x86,arm64}.dll` and loads the one matching
+`os.arch`. Only Windows is supported; on other platforms the log reports the
+unsupported platform and the mod stays inert.
 
 ## Credits
 

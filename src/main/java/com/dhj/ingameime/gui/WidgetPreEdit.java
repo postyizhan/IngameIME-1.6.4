@@ -2,9 +2,9 @@ package com.dhj.ingameime.gui;
 
 import com.dhj.ingameime.ClientProxy;
 import com.dhj.ingameime.config.Config;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.Minecraft;
+import net.minecraft.FontRenderer;
+import net.minecraft.ScaledResolution;
 
 public class WidgetPreEdit extends Widget {
     private final int CursorWidth = 3;

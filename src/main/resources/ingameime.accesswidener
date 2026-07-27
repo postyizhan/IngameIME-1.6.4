@@ -1,0 +1,27 @@
+accessWidener v2 named
+
+# GuiTextField: VanillaTextFieldControl 需要读取这些私有字段来定位光标。
+# 原 Forge 版由 at/accesstransformer.cfg + IngameIMETransformer.widenAccess() 完成，
+# 这里统一交给 AccessWidener（loom 在编译期应用，FML 在运行期应用）。
+accessible field net/minecraft/GuiTextField fontRenderer Lnet/minecraft/FontRenderer;
+accessible field net/minecraft/GuiTextField xPos I
+accessible field net/minecraft/GuiTextField yPos I
+accessible field net/minecraft/GuiTextField width I
+accessible field net/minecraft/GuiTextField height I
+accessible field net/minecraft/GuiTextField lineScrollOffset I
+
+# GuiScreenBook: BookControl 读写编辑状态与页面内容。
+accessible field net/minecraft/GuiScreenBook editingTitle Z
+accessible field net/minecraft/GuiScreenBook bookTitle Ljava/lang/String;
+accessible field net/minecraft/GuiScreenBook bookModified Z
+accessible field net/minecraft/GuiScreenBook bookImageWidth I
+accessible field net/minecraft/GuiScreenBook bookPages Lnet/minecraft/NBTTagList;
+accessible field net/minecraft/GuiScreenBook currPage I
+
+# func_74160_b 是原版"向当前页追加文本"，MCP 未给可读名；updateButtons 刷新按钮状态。
+accessible method net/minecraft/GuiScreenBook func_74160_b (Ljava/lang/String;)V
+accessible method net/minecraft/GuiScreenBook updateButtons ()V
+
+# GuiEditSign: SignControl 读取正在编辑的告示牌与行号。
+accessible field net/minecraft/GuiEditSign entitySign Lnet/minecraft/TileEntitySign;
+accessible field net/minecraft/GuiEditSign editLine I

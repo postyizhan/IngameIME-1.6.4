@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "ingameime",
+  "version": "${version}",
+  "name": "IngameIME",
+  "description": "Use InputMethod in full screen Minecraft.",
+  "authors": [
+    "postyizhan"
+  ],
+  "contributors": [
+    "Windmill_City",
+    "DHJComical",
+    "RuiXuqi",
+    "Andrea Frederica",
+    "Circulate233"
+  ],
+  "contact": {},
+  "license": "LGPL-3.0",
+  "icon": "assets/ingameime/logo.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "com.dhj.ingameime.IngameIME_Fish"
+    ]
+  },
+  "mixins": [
+    "ingameime.mixins.json"
+  ],
+  "depends": {
+    "fishmodloader": ">=3.4.0",
+    "minecraft": "1.6.4-mite",
+    "java": ">=17"
+  },
+  "accessWidener": "ingameime.accesswidener"
+}

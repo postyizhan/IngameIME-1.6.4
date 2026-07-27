@@ -5,15 +5,15 @@ import com.dhj.ingameime.control.BookControl;
 import com.dhj.ingameime.control.IControl;
 import com.dhj.ingameime.control.NoControl;
 import com.dhj.ingameime.control.SignControl;
-import net.minecraft.client.gui.GuiScreenBook;
-import net.minecraft.client.gui.inventory.GuiEditSign;
+import net.minecraft.GuiScreenBook;
+import net.minecraft.GuiEditSign;
 
 public enum IMStates implements IMEventHandler {
     Disabled {
         @Override
         public IMStates onScreenOpen(Object screen) {
-            // 只用 instanceof：进到这里的类已经被 FML 的 DeobfuscationTransformer 重映射为 SRG 名，
-            // 旧代码额外比对的混淆名(axy/axf)永远不会命中。
+            // 只用 instanceof：FML 在启动时已把游戏 jar 由 official 重映射为 named，
+            // 运行期拿到的就是 net.minecraft.GuiEditSign 这类可读名，不存在混淆名分支。
             if (screen instanceof GuiEditSign) {
                 setControl(new SignControl(screen), false);
                 Internal.setActivated(true);
@@ -32,7 +32,7 @@ public enum IMStates implements IMEventHandler {
             if (focused && !ClientProxy.hasOpenScreen()) return this;
             if (focused) {
                 setControl(control, isOverlay);
-                IngameIME_Forge.logDebugInfo("Opened by control focus: {}", control.getClass().getSimpleName());
+                IngameIME_Fish.logDebugInfo("Opened by control focus: {}", control.getClass().getSimpleName());
                 Internal.setActivated(true);
                 return OpenedAuto;
             }
@@ -41,7 +41,7 @@ public enum IMStates implements IMEventHandler {
 
         @Override
         public IMStates onToggleKey() {
-            IngameIME_Forge.logDebugInfo("Turned on by toggle key");
+            IngameIME_Fish.logDebugInfo("Turned on by toggle key");
             Internal.setActivated(true);
             return OpenedManual;
         }
@@ -59,7 +59,7 @@ public enum IMStates implements IMEventHandler {
         public IMStates onMouseMove() {
             if (!Config.TurnOffOnMouseMove) return this;
             Internal.setActivated(false);
-            IngameIME_Forge.logDebugInfo("Turned off by mouse move");
+            IngameIME_Fish.logDebugInfo("Turned off by mouse move");
             return Disabled;
         }
     },
@@ -77,7 +77,7 @@ public enum IMStates implements IMEventHandler {
                         Internal.setActivated(true);
                         return this;
                     }
-                    IngameIME_Forge.logDebugInfo("Turned off by losing control focus: {}", control.getClass().getSimpleName());
+                    IngameIME_Fish.logDebugInfo("Turned off by losing control focus: {}", control.getClass().getSimpleName());
                     return Disabled;
                 }
                 return this;
@@ -85,7 +85,7 @@ public enum IMStates implements IMEventHandler {
 
             if (changed) Internal.setActivated(false);
             setControl(control, isOverlay);
-            if (changed) IngameIME_Forge.logDebugInfo("Opened by control focus: {}", control.getClass().getSimpleName());
+            if (changed) IngameIME_Fish.logDebugInfo("Opened by control focus: {}", control.getClass().getSimpleName());
             Internal.setActivated(true);
             ClientProxy.Screen.WInputMode.setActive(true);
             return this;
@@ -123,7 +123,7 @@ public enum IMStates implements IMEventHandler {
 
     @Override
     public IMStates onToggleKey() {
-        IngameIME_Forge.logDebugInfo("Turned off by toggle key");
+        IngameIME_Fish.logDebugInfo("Turned off by toggle key");
         Internal.setActivated(false);
         return Disabled;
     }

@@ -2,8 +2,8 @@ package com.dhj.ingameime;
 
 import com.dhj.ingameime.config.Config;
 import ingameime.*;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.Minecraft;
+import net.minecraft.ScaledResolution;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.Display;
@@ -18,7 +18,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.logging.Level;
 
 public class Internal {
     public static boolean LIBRARY_LOADED = false;
@@ -70,13 +69,13 @@ public class Internal {
             } catch (IOException e) {
                 // 写不进去通常是已有其他实例加载了它；只要文件在就继续试着加载。
                 if (!Files.exists(path)) throw e;
-                IngameIME_Forge.LOG.fine("Reusing existing native library at " + path);
+                IngameIME_Fish.LOG.debug("Reusing existing native library at " + path);
             }
             System.load(path.toString());
             LIBRARY_LOADED = true;
-            IngameIME_Forge.LOG.info("Library [" + libName + "] has loaded!");
+            IngameIME_Fish.LOG.info("Library [" + libName + "] has loaded!");
         } catch (Throwable e) {
-            IngameIME_Forge.LOG.warning("Try to load library [" + libName + "] but failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            IngameIME_Fish.LOG.warn("Try to load library [" + libName + "] but failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
         } finally {
             if (lib != null) try { lib.close(); } catch (Throwable ignored) {}
         }
@@ -88,7 +87,7 @@ public class Internal {
             getImplementation.setAccessible(true);
             Object impl = getImplementation.invoke(null);
             if (impl == null) return 0;
-            IngameIME_Forge.LOG.info("Display implementation class: " + impl.getClass().getName());
+            IngameIME_Fish.LOG.info("Display implementation class: " + impl.getClass().getName());
 
             try {
                 Method getHwnd = impl.getClass().getDeclaredMethod("getHwnd");
@@ -106,15 +105,15 @@ public class Internal {
             } catch (NoSuchFieldException ignored) {
             }
         } catch (Throwable e) {
-            IngameIME_Forge.LOG.log(Level.WARNING, "Failed to get window handle via LWJGL2", e);
+            IngameIME_Fish.LOG.warn("Failed to get window handle via LWJGL2", e);
         }
         return 0;
     }
 
     private static long getWindowHandle() {
         long hWnd = getWindowHandle_LWJGL2();
-        if (hWnd == 0) IngameIME_Forge.LOG.severe("Failed to obtain LWJGL2 HWND");
-        else IngameIME_Forge.LOG.info("Successfully obtained HWND: 0x" + Long.toHexString(hWnd));
+        if (hWnd == 0) IngameIME_Fish.LOG.error("Failed to obtain LWJGL2 HWND");
+        else IngameIME_Fish.LOG.info("Successfully obtained HWND: 0x" + Long.toHexString(hWnd));
         return hWnd;
     }
 
@@ -130,7 +129,7 @@ public class Internal {
         clearOverlayState();
         resetPreEditRectCache();
         if (InputCtx == null) return;
-        IngameIME_Forge.logVerboseInfo("Destroying InputContext contextGeneration={}, activationGeneration={}", Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION));
+        IngameIME_Fish.logVerboseInfo("Destroying InputContext contextGeneration={}, activationGeneration={}", Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION));
         try {
             InputCtx.setCallback((PreEditCallback) null);
             InputCtx.setCallback((CommitCallback) null);
@@ -151,7 +150,7 @@ public class Internal {
         commitCallbackProxy = null;
         candidateListCallbackProxy = null;
         inputModeCallbackProxy = null;
-        IngameIME_Forge.LOG.info("InputContext has destroyed!");
+        IngameIME_Fish.LOG.info("InputContext has destroyed!");
     }
 
     private static void clearOverlayState() {
@@ -170,7 +169,7 @@ public class Internal {
     private static boolean shouldApplyCallback(String type, int contextGeneration, int activationGeneration) {
         boolean current = isCurrentContext(contextGeneration, activationGeneration);
         if (!current) {
-            IngameIME_Forge.logVerboseInfo("Dropped stale IME {} callback contextGeneration={}, activationGeneration={} currentContextGeneration={}, currentActivationGeneration={}, activated={}, hasContext={}",
+            IngameIME_Fish.logVerboseInfo("Dropped stale IME {} callback contextGeneration={}, activationGeneration={} currentContextGeneration={}, currentActivationGeneration={}, activated={}, hasContext={}",
                     type, Integer.valueOf(contextGeneration), Integer.valueOf(activationGeneration),
                     Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION),
                     Boolean.valueOf(ACTIVATED), Boolean.valueOf(InputCtx != null));
@@ -181,27 +180,27 @@ public class Internal {
     public static void createInputCtx() {
         if (!LIBRARY_LOADED) return;
         try {
-            IngameIME_Forge.LOG.info("Using IngameIME-Native: " + InputContext.getVersion());
+            IngameIME_Fish.LOG.info("Using IngameIME-Native: " + InputContext.getVersion());
         } catch (Throwable t) {
-            IngameIME_Forge.LOG.log(Level.WARNING, "Failed to query native version", t);
+            IngameIME_Fish.LOG.warn("Failed to query native version", t);
         }
         if (!Display.isCreated()) {
-            IngameIME_Forge.LOG.warning("Display is not created yet, deferring InputContext creation");
+            IngameIME_Fish.LOG.warn("Display is not created yet, deferring InputContext creation");
             return;
         }
         long hWnd = getWindowHandle();
         if (hWnd == 0) {
-            IngameIME_Forge.LOG.severe("InputContext could not init as HWND is NULL");
+            IngameIME_Fish.LOG.error("InputContext could not init as HWND is NULL");
             return;
         }
         try {
             boolean effectiveUiLess = Config.UiLess_Windows || Minecraft.getMinecraft().isFullScreen();
             API api = "TextServiceFramework".equals(Config.API_Windows) ? API.TextServiceFramework : API.Imm32;
             InputCtx = IngameIME.CreateInputContextWin32(hWnd, api, effectiveUiLess);
-            IngameIME_Forge.LOG.info("InputContext has created!");
-            IngameIME_Forge.logVerboseInfo("Created InputContext contextGeneration={}, activationGeneration={}, api={}, uiless={}", Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION), api, Boolean.valueOf(effectiveUiLess));
+            IngameIME_Fish.LOG.info("InputContext has created!");
+            IngameIME_Fish.logVerboseInfo("Created InputContext contextGeneration={}, activationGeneration={}, api={}, uiless={}", Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION), api, Boolean.valueOf(effectiveUiLess));
         } catch (Throwable t) {
-            IngameIME_Forge.LOG.log(Level.SEVERE, "Failed to create InputContext", t);
+            IngameIME_Fish.LOG.error("Failed to create InputContext", t);
             return;
         }
 
@@ -222,10 +221,10 @@ public class Internal {
                     selStart = context == null ? -1 : context.getSelStart();
                     selEnd = context == null ? -1 : context.getSelEnd();
                 } catch (Throwable e) {
-                    IngameIME_Forge.LOG.log(Level.SEVERE, "Exception while copying preedit callback data", e);
+                    IngameIME_Fish.LOG.error("Exception while copying preedit callback data", e);
                     return;
                 }
-                IngameIME_Forge.logVerboseInfo("IME preedit callback contextGeneration={}, activationGeneration={}, state={}, content={}, selStart={}, selEnd={}",
+                IngameIME_Fish.logVerboseInfo("IME preedit callback contextGeneration={}, activationGeneration={}, state={}, content={}, selStart={}, selEnd={}",
                         Integer.valueOf(contextGeneration), Integer.valueOf(activationGeneration), state, content, Integer.valueOf(selStart), Integer.valueOf(selEnd));
                 CALLBACK_QUEUE.add(new Runnable() {
                     @Override
@@ -235,13 +234,13 @@ public class Internal {
                             if (state == CompositionState.Begin) ClientProxy.Screen.WInputMode.setActive(false);
                             String displayContent = filterPreEditText(content);
                             if (content != displayContent && (content == null || !content.equals(displayContent))) {
-                                IngameIME_Forge.logVerboseInfo("Filtered control-token IME preedit state={}, original={}, filtered={}",
+                                IngameIME_Fish.logVerboseInfo("Filtered control-token IME preedit state={}, original={}, filtered={}",
                                         state, describeCommitText(content), describeCommitText(displayContent));
                             }
                             ClientProxy.Screen.PreEdit.setContent(displayContent, displayContent == null ? -1 : selStart);
-                            IngameIME_Forge.logVerboseInfo("IME preedit applied state={}, content={}, cursor={}", state, displayContent, Integer.valueOf(displayContent == null ? -1 : selStart));
+                            IngameIME_Fish.logVerboseInfo("IME preedit applied state={}, content={}, cursor={}", state, displayContent, Integer.valueOf(displayContent == null ? -1 : selStart));
                         } catch (Throwable e) {
-                            IngameIME_Forge.LOG.log(Level.SEVERE, "Exception during preedit callback", e);
+                            IngameIME_Fish.LOG.error("Exception during preedit callback", e);
                         }
                     }
                 });
@@ -255,7 +254,7 @@ public class Internal {
                 int contextGeneration = CONTEXT_GENERATION;
                 int activationGeneration = ACTIVATION_GENERATION;
                 if (text != null && text.length() > 0) {
-                    IngameIME_Forge.logVerboseInfo("IME commit queued contextGeneration={}, activationGeneration={}: {}",
+                    IngameIME_Fish.logVerboseInfo("IME commit queued contextGeneration={}, activationGeneration={}: {}",
                             Integer.valueOf(contextGeneration), Integer.valueOf(activationGeneration), text);
                     COMMIT_QUEUE.add(new CommitText(contextGeneration, activationGeneration, text));
                 }
@@ -274,10 +273,10 @@ public class Internal {
                     candidates = context == null ? null : new ArrayList<String>(context.getCandidates());
                     selection = context == null ? -1 : context.getSelection();
                 } catch (Throwable e) {
-                    IngameIME_Forge.LOG.log(Level.SEVERE, "Exception while copying candidate callback data", e);
+                    IngameIME_Fish.LOG.error("Exception while copying candidate callback data", e);
                     return;
                 }
-                IngameIME_Forge.logVerboseInfo("IME candidate callback contextGeneration={}, activationGeneration={}, state={}, selection={}, candidates={}",
+                IngameIME_Fish.logVerboseInfo("IME candidate callback contextGeneration={}, activationGeneration={}, state={}, selection={}, candidates={}",
                         Integer.valueOf(contextGeneration), Integer.valueOf(activationGeneration), state, Integer.valueOf(selection), candidates);
                 CALLBACK_QUEUE.add(new Runnable() {
                     @Override
@@ -285,9 +284,9 @@ public class Internal {
                         if (!shouldApplyCallback("candidate", contextGeneration, activationGeneration)) return;
                         try {
                             ClientProxy.Screen.CandidateList.setContent(candidates, selection);
-                            IngameIME_Forge.logVerboseInfo("IME candidate applied selection={}, candidates={}", Integer.valueOf(selection), candidates);
+                            IngameIME_Fish.logVerboseInfo("IME candidate applied selection={}, candidates={}", Integer.valueOf(selection), candidates);
                         } catch (Throwable e) {
-                            IngameIME_Forge.LOG.log(Level.SEVERE, "Exception during candidate callback", e);
+                            IngameIME_Fish.LOG.error("Exception during candidate callback", e);
                         }
                     }
                 });
@@ -300,7 +299,7 @@ public class Internal {
             protected void call(final InputMode mode) {
                 final int contextGeneration = CONTEXT_GENERATION;
                 final int activationGeneration = ACTIVATION_GENERATION;
-                IngameIME_Forge.logVerboseInfo("IME input-mode callback contextGeneration={}, activationGeneration={}, mode={}",
+                IngameIME_Fish.logVerboseInfo("IME input-mode callback contextGeneration={}, activationGeneration={}, mode={}",
                         Integer.valueOf(contextGeneration), Integer.valueOf(activationGeneration), mode);
                 CALLBACK_QUEUE.add(new Runnable() {
                     @Override
@@ -308,9 +307,9 @@ public class Internal {
                         if (!shouldApplyCallback("input-mode", contextGeneration, activationGeneration)) return;
                         try {
                             ClientProxy.Screen.WInputMode.setMode(mode);
-                            IngameIME_Forge.logVerboseInfo("IME input-mode applied mode={}", mode);
+                            IngameIME_Fish.logVerboseInfo("IME input-mode applied mode={}", mode);
                         } catch (Throwable e) {
-                            IngameIME_Forge.LOG.log(Level.SEVERE, "Exception during input mode callback", e);
+                            IngameIME_Fish.LOG.error("Exception during input mode callback", e);
                         }
                     }
                 });
@@ -335,7 +334,7 @@ public class Internal {
             if (scaledWidth <= 0 || scaledHeight <= 0) return;
             if (x < 0 || y < 0) {
                 if (Config.VerboseLog) {
-                    IngameIME_Forge.logVerboseInfo("Skipped PreEditRect update for invalid gui=({},{} {}x{}) scaled={}x{} display={}x{}",
+                    IngameIME_Fish.logVerboseInfo("Skipped PreEditRect update for invalid gui=({},{} {}x{}) scaled={}x{} display={}x{}",
                             Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(width), Integer.valueOf(height),
                             Integer.valueOf(scaledWidth), Integer.valueOf(scaledHeight), Integer.valueOf(mc.displayWidth), Integer.valueOf(mc.displayHeight));
                 }
@@ -378,13 +377,13 @@ public class Internal {
             lastRectHeight = nativeHeight;
 
             if (Config.VerboseLog) {
-                IngameIME_Forge.logVerboseInfo("Updated PreEditRect gui=({},{} {}x{}) scaled={}x{} display={}x{} native=({},{} {}x{})",
+                IngameIME_Fish.logVerboseInfo("Updated PreEditRect gui=({},{} {}x{}) scaled={}x{} display={}x{} native=({},{} {}x{})",
                         Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(width), Integer.valueOf(height),
                         Integer.valueOf(scaledWidth), Integer.valueOf(scaledHeight), Integer.valueOf(mc.displayWidth), Integer.valueOf(mc.displayHeight),
                         Integer.valueOf(nativeLeft), Integer.valueOf(nativeTop), Integer.valueOf(nativeWidth), Integer.valueOf(nativeHeight));
             }
         } catch (Throwable t) {
-            IngameIME_Forge.LOG.log(Level.WARNING, "Failed to update IME preedit rect", t);
+            IngameIME_Fish.LOG.warn("Failed to update IME preedit rect", t);
         }
     }
 
@@ -417,7 +416,7 @@ public class Internal {
     public static void loadLibrary() {
         boolean isWindows = LWJGLUtil.getPlatform() == LWJGLUtil.PLATFORM_WINDOWS;
         if (!isWindows) {
-            IngameIME_Forge.LOG.severe("Unsupported platform: " + LWJGLUtil.getPlatformName());
+            IngameIME_Fish.LOG.error("Unsupported platform: " + LWJGLUtil.getPlatformName());
             return;
         }
         String arch = System.getProperty("os.arch", "").toLowerCase();
@@ -434,7 +433,7 @@ public class Internal {
             tryLoadLibrary("IngameIME_Java-x64.dll");
             tryLoadLibrary("IngameIME_Java-arm64.dll");
         }
-        if (!LIBRARY_LOADED) IngameIME_Forge.LOG.severe("Unsupported arch: " + System.getProperty("os.arch"));
+        if (!LIBRARY_LOADED) IngameIME_Fish.LOG.error("Unsupported arch: " + System.getProperty("os.arch"));
     }
 
     public static void drainCallbackQueue() {
@@ -443,7 +442,7 @@ public class Internal {
             try {
                 task.run();
             } catch (Throwable e) {
-                IngameIME_Forge.LOG.log(Level.SEVERE, "Exception while draining IME callback task", e);
+                IngameIME_Fish.LOG.error("Exception while draining IME callback task", e);
             }
         }
     }
@@ -455,15 +454,15 @@ public class Internal {
             try {
                 String text = filterCommittedText(commit.text);
                 if (text == null || text.length() == 0) {
-                    IngameIME_Forge.logVerboseInfo("Skipped non-text IME commit contextGeneration={}, activationGeneration={}: {}",
+                    IngameIME_Fish.logVerboseInfo("Skipped non-text IME commit contextGeneration={}, activationGeneration={}: {}",
                             Integer.valueOf(commit.contextGeneration), Integer.valueOf(commit.activationGeneration), describeCommitText(commit.text));
                     continue;
                 }
-                IngameIME_Forge.logVerboseInfo("IME commit draining contextGeneration={}, activationGeneration={} into {}: {}",
+                IngameIME_Fish.logVerboseInfo("IME commit draining contextGeneration={}, activationGeneration={} into {}: {}",
                         Integer.valueOf(commit.contextGeneration), Integer.valueOf(commit.activationGeneration), IMStates.getActiveControl().getClass().getName(), text);
                 IMStates.getActiveControl().writeText(text);
             } catch (Throwable e) {
-                IngameIME_Forge.LOG.log(Level.SEVERE, "Exception while writing committed text", e);
+                IngameIME_Fish.LOG.error("Exception while writing committed text", e);
             }
         }
     }
@@ -471,7 +470,7 @@ public class Internal {
     private static String filterCommittedText(String text) {
         String filtered = filterControlTokenText(text);
         if (text != filtered && (text == null || !text.equals(filtered))) {
-            IngameIME_Forge.logVerboseInfo("Filtered control-token IME commit original={}, filtered={}",
+            IngameIME_Fish.logVerboseInfo("Filtered control-token IME commit original={}, filtered={}",
                     describeCommitText(text), describeCommitText(filtered));
         }
         return filtered;
@@ -521,7 +520,7 @@ public class Internal {
         }
         String filtered = result == null ? text : result.toString();
         if (filtered.length() != text.length()) {
-            IngameIME_Forge.logVerboseInfo("Filtered ChatAllowedCharacters string original={}, filtered={}", describeCommitText(text), describeCommitText(filtered));
+            IngameIME_Fish.logVerboseInfo("Filtered ChatAllowedCharacters string original={}, filtered={}", describeCommitText(text), describeCommitText(filtered));
         }
         return filtered;
     }
@@ -567,7 +566,7 @@ public class Internal {
         controlTypedSequence.append(typedChar);
         String sequence = controlTypedSequence.toString();
         if (isNamedControlTokenPrefixSequence(sequence)) {
-            IngameIME_Forge.logVerboseInfo("Suppressed possible IME control-token keyTyped char='{}' keyCode={} sequence='{}'", String.valueOf(typedChar), Integer.valueOf(keyCode), sequence);
+            IngameIME_Fish.logVerboseInfo("Suppressed possible IME control-token keyTyped char='{}' keyCode={} sequence='{}'", String.valueOf(typedChar), Integer.valueOf(keyCode), sequence);
             return true;
         }
 
@@ -580,7 +579,7 @@ public class Internal {
         controlTypedSequenceField = textField;
         controlTypedSequence.setLength(0);
         controlTypedSequenceStartedAt = System.currentTimeMillis();
-        IngameIME_Forge.logVerboseInfo("Armed IME control-token keyTyped suppression keyCode={} charCode={}", Integer.valueOf(keyCode), Integer.valueOf((int) typedChar));
+        IngameIME_Fish.logVerboseInfo("Armed IME control-token keyTyped suppression keyCode={} charCode={}", Integer.valueOf(keyCode), Integer.valueOf((int) typedChar));
     }
 
     private static boolean isControlActionKey(int keyCode) {
@@ -740,7 +739,7 @@ public class Internal {
             COMMIT_QUEUE.clear();
             clearOverlayState();
             if (!GAMEPLAY_INACTIVE_LOGGED) {
-                IngameIME_Forge.logVerboseInfo("InputContext forced inactive for gameplay, contextGeneration={}, activationGeneration={}",
+                IngameIME_Fish.logVerboseInfo("InputContext forced inactive for gameplay, contextGeneration={}, activationGeneration={}",
                         Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION));
                 GAMEPLAY_INACTIVE_LOGGED = true;
             }
@@ -752,7 +751,7 @@ public class Internal {
             COMMIT_QUEUE.clear();
             clearOverlayState();
             if (!GAMEPLAY_INACTIVE_FAILURE_LOGGED) {
-                IngameIME_Forge.LOG.log(Level.WARNING, "Failed to force IME inactive for gameplay", t);
+                IngameIME_Fish.LOG.warn("Failed to force IME inactive for gameplay", t);
                 GAMEPLAY_INACTIVE_FAILURE_LOGGED = true;
             }
         }
@@ -764,7 +763,7 @@ public class Internal {
             if (InputCtx == null) createInputCtx();
             if (InputCtx == null) return;
             if (activateInputCtx()) return;
-            IngameIME_Forge.LOG.warning("Recreating InputContext after activation failure");
+            IngameIME_Fish.LOG.warn("Recreating InputContext after activation failure");
             destroyInputCtx();
             createInputCtx();
             if (InputCtx != null) activateInputCtx();
@@ -781,16 +780,16 @@ public class Internal {
         }
         try {
             InputCtx.setActivated(false);
-            IngameIME_Forge.logDebugInfo("IM active state: {}", false);
+            IngameIME_Fish.logDebugInfo("IM active state: {}", false);
         } catch (Throwable t) {
-            IngameIME_Forge.LOG.log(Level.SEVERE, "Failed to deactivate IME", t);
+            IngameIME_Fish.LOG.error("Failed to deactivate IME", t);
         } finally {
             ACTIVATED = false;
             ACTIVATION_GENERATION++;
             CALLBACK_QUEUE.clear();
             COMMIT_QUEUE.clear();
             clearOverlayState();
-            IngameIME_Forge.logVerboseInfo("InputContext kept for reuse after deactivation, contextGeneration={}, activationGeneration={}",
+            IngameIME_Fish.logVerboseInfo("InputContext kept for reuse after deactivation, contextGeneration={}, activationGeneration={}",
                     Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION));
         }
     }
@@ -807,8 +806,8 @@ public class Internal {
             GAMEPLAY_INACTIVE_LOGGED = false;
             GAMEPLAY_INACTIVE_FAILURE_LOGGED = false;
             GAMEPLAY_INACTIVE_CREATE_ATTEMPTED = false;
-            IngameIME_Forge.logDebugInfo("IM active state: {}", true);
-            IngameIME_Forge.logVerboseInfo("InputContext activated, contextGeneration={}, activationGeneration={}",
+            IngameIME_Fish.logDebugInfo("IM active state: {}", true);
+            IngameIME_Fish.logVerboseInfo("InputContext activated, contextGeneration={}, activationGeneration={}",
                     Integer.valueOf(CONTEXT_GENERATION), Integer.valueOf(ACTIVATION_GENERATION));
             return true;
         } catch (Throwable t) {
@@ -817,7 +816,7 @@ public class Internal {
             CALLBACK_QUEUE.clear();
             COMMIT_QUEUE.clear();
             clearOverlayState();
-            IngameIME_Forge.LOG.log(Level.SEVERE, "Failed to activate IME", t);
+            IngameIME_Fish.LOG.error("Failed to activate IME", t);
             return false;
         }
     }

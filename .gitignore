@@ -48,3 +48,4 @@ config/*.cfg
 
 # Build artifacts
 *.log
+.pi-subagents

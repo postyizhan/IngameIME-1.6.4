@@ -1,112 +1,77 @@
 plugins {
-    id 'java'
-    // 必须声明在 ForgeGradle 之前:FG 创建 minecraft 扩展时要引用该插件的类。
-    id 'net.minecraftforge.accesstransformers' version '2.0.0'
-    id 'net.minecraftforge.gradle' version "7.0.28"
-    id("net.minecraftforge.renamer") version "1.1.2"
+    id 'fml-loom' version '0.1'
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(8)
+version = project.mod_version
+group = project.maven_group
 
-tasks.withType(JavaCompile) {
-    options.fork = true
-    options.encoding = 'UTF-8'
-    options.compilerArgs += ['-source', '1.6', '-target', '1.6']
+base {
+    archivesName = project.archives_base_name
 }
-
-// launchwrapper 1.8 的 Launch.launch() 在 JDK 8u20+ 下必抛 ConcurrentModificationException
-// (详见 src/launchPatch/java/dev/launchfix/CmeSafeLaunch.java 的类注释)。
-// 这里单独编译一个等价且 CME-safe 的启动器,顶替原版 Launch。
-// 独立 sourceSet 而非塞进 main:避免它被打进 mod jar、也避免 FML 把它当 mod 类扫描。
-sourceSets.register('launchPatch')
-
-version = "1.0.0-1.6.4"
-group = "com.dhj.ingameime"
-base.archivesName = "IngameIME"
 
 repositories {
-    mavenCentral()
-    minecraft.mavenizer(it)
-    maven fg.forgeMaven
-    maven fg.minecraftLibsMaven
-    flatDir(
-            dir : 'libs'
-    )
+    maven {
+        name = "Spongepowered"
+        url = "https://repo.spongepowered.org/repository/maven-public/"
+    }
+    maven {
+        name = "ModdedMITE"
+        url = "https://maven.limingzxc.top/repository/maven-public/"
+    }
 }
 
-minecraft {
-    mappings channel: 'snapshot', version: '20130918-1.6.3'
-
-    // 放宽原版成员访问,取代运行期反射。详见 at/accesstransformer.cfg 的注释。
-    // 必须用 file(...):直接传字符串会被解析成第一个 sourceSet 的 resources 目录
-    // (这里是 src/launchPatch/resources/),静默失效。
-    // 放在 at/ 而非 src/main/resources/META-INF/:避免被打进 mod jar——FML 9.11 不认它,
-    // 运行期放宽由 IngameIMETransformer 负责。
-    accessTransformer.from file('at/accesstransformer.cfg')
-
-    runs {
-        register('client') {
-            workingDir = file('runs/main/client/')
-            environment.put("tweakClass", "cpw.mods.fml.common.launcher.FMLTweaker")
-            jvmArgs "-Dfml.ignoreInvalidMinecraftCertificates=true", "-Dfml.coreMods.load=com.dhj.ingameime.core.IngameIMECorePlugin"
-            // env 的 mainClass 是 slime-launcher LegacyDev 读取的真实入口(外层 main 仍是
-            // net.minecraftforge.legacydev.MainClient,它负责补 --tweakClass/--version 等参数)。
-            // 这里把默认的 net.minecraft.launchwrapper.Launch 换成 CME-safe 版本。
-            environment.put("mainClass", "dev.launchfix.CmeSafeLaunch")
-        }
-        register('server') {
-            workingDir = file('runs/main/server/')
-            // 服务端必须用 FMLServerTweaker:FMLTweaker 是客户端 tweaker,它的
-            // getLaunchTarget() 返回 net.minecraft.client.main.Main,会让 runServer
-            // 去启动客户端并在加载 LWJGL 本地库时报 UnsatisfiedLinkError。
-            environment.put("tweakClass", "cpw.mods.fml.common.launcher.FMLServerTweaker")
-            jvmArgs "-Dfml.ignoreInvalidMinecraftCertificates=true", "-Dfml.coreMods.load=com.dhj.ingameime.core.IngameIMECorePlugin"
-            environment.put("mainClass", "dev.launchfix.CmeSafeLaunch")
-        }
-    }
+configurations {
+    fml
 }
 
 dependencies {
-    implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    fml "com.github.MinecraftIsTooEasy:FishModLoader:${project.fml_version}"
+    implementation "com.github.MinecraftIsTooEasy:FishModLoader:${project.fml_version}"
 }
 
-// 补丁启动器只需要 launchwrapper 与 jopt-simple,直接复用 main 的编译 classpath。
-sourceSets.launchPatch.compileClasspath = sourceSets.main.compileClasspath
-// run 任务的 JVM classpath = slime-launcher 工具 jar + main.runtimeClasspath,
-// 所以补丁类要挂到 main.runtimeClasspath 上(run DSL 的 classpath 是整体覆盖语义,不能用)。
-// 该 FileCollection 自带 builtBy,runClient 会自动依赖 compileLaunchPatchJava。
-// 只影响运行时:jar 打的是 sourceSets.main.output,补丁不会进发布产物。
-sourceSets.main.runtimeClasspath += sourceSets.launchPatch.output
+def fmlResolvedFile = configurations.fml.files.iterator().next()
+
+loom {
+    accessWidenerPath = file("src/main/resources/ingameime.accesswidener")
+    mergedMinecraftJar()
+    setFML(fmlResolvedFile)
+    dependencies.add("mappings", fmlMCPMappings())
+    mods {
+        "ingameime" {
+            sourceSet sourceSets.main
+        }
+    }
+    runs {
+        client {
+            String name = project.username
+            String width = project.screen_width
+            String height = project.screen_height
+            programArgs "--userProperties", "{}", "--username", name, "--session", "a.a.a.a", "--width", width, "--height", height
+        }
+    }
+}
 
 processResources {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
     inputs.property "version", project.version
 
-    from(sourceSets.main.resources.srcDirs) {
-        include 'mcmod.info'
-        expand 'version': project.version
+    filesMatching("fml.mod.json") {
+        expand "version": project.version
     }
-    from(sourceSets.main.resources.srcDirs) {
-        exclude 'mcmod.info'
-    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 17
+    it.options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 jar {
-    manifest {
-        attributes(
-                'FMLCorePlugin': 'com.dhj.ingameime.core.IngameIMECorePlugin',
-                'FMLCorePluginContainsFMLMod': 'true',
-                'ForceLoadAsMod': 'true'
-        )
-    }
+    from("LICENSE")
 }
-
-renamer.mappings.from minecraft.dependency.toSrgFile
-
-renamer.classes(tasks.named('jar', Jar)) {
-    map.from minecraft.dependency.toSrgFile
-
-    archiveClassifier = 'srg'
-}
-

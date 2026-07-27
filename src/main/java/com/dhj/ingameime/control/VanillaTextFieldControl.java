@@ -1,18 +1,17 @@
 package com.dhj.ingameime.control;
 
 import com.dhj.ingameime.ClientProxy;
-import com.dhj.ingameime.IngameIME_Forge;
-import net.minecraft.client.gui.GuiTextField;
+import com.dhj.ingameime.IngameIME_Fish;
+import net.minecraft.GuiTextField;
 
 import java.awt.Point;
-import java.util.logging.Level;
 
 /**
  * GuiTextField 的光标定位。
  *
  * 这里不再有反射：需要的方法(getVisible/getText/getCursorPosition/...)原版就是 public，
- * 私有字段(fontRenderer/xPos/yPos/width/height/lineScrollOffset)由 AccessTransformer 放宽
- * ——开发期见 at/accesstransformer.cfg，运行期见 IngameIMETransformer.widenAccess()。
+ * 私有字段(fontRenderer/xPos/yPos/width/height/lineScrollOffset)由 AccessWidener 放宽,
+ * 见 src/main/resources/ingameime.accesswidener。
  *
  * 注意用 field.width 而不是 getWidth()：后者在启用背景绘制时返回 width-8，
  * 与 getCursorPos 期望的裸宽度不符。
@@ -46,7 +45,7 @@ public class VanillaTextFieldControl<T> extends AbstractControl<T> {
                     field.getEnableBackgroundDrawing()
             );
         } catch (Throwable t) {
-            IngameIME_Forge.LOG.log(Level.WARNING, "Failed to get GuiTextField cursor position", t);
+            IngameIME_Fish.LOG.warn("Failed to get GuiTextField cursor position", t);
             return new Point(0, 0);
         }
     }

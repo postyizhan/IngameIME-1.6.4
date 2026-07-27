@@ -1,7 +1,7 @@
 package com.dhj.ingameime.gui;
 
 import com.dhj.ingameime.config.Config;
-import net.minecraft.client.Minecraft;
+import net.minecraft.Minecraft;
 
 import java.util.List;
 
