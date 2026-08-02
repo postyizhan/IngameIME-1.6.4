@@ -5,6 +5,7 @@ import com.dhj.ingameime.Internal;
 import net.minecraft.GuiScreen;
 import net.minecraft.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -18,6 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Minecraft.class)
 public class MinecraftMixin {
+    @Shadow
+    public GuiScreen currentScreen;
     @Unique
     private static boolean ingameime$activatedBeforeFullscreen;
 
@@ -34,8 +37,7 @@ public class MinecraftMixin {
         // 2. MITE 额外加了一个提前 return（幽灵状态下打开 GuiInventory），
         //    那条路径上界面并未真正打开。
         // 读回写后的 currentScreen 同时避开这两个坑。
-        GuiScreen displayed = ((Minecraft) (Object) this).currentScreen;
-        if (displayed != null) ClientProxy.INSTANCE.onScreenOpen(displayed);
+        if (this.currentScreen != null) ClientProxy.INSTANCE.onScreenOpen(this.currentScreen);
     }
 
     /**

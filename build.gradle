@@ -30,6 +30,10 @@ dependencies {
 
     fml "com.github.MinecraftIsTooEasy:FishModLoader:${project.fml_version}"
     implementation "com.github.MinecraftIsTooEasy:FishModLoader:${project.fml_version}"
+
+    localRuntime "com.github.MinecraftIsTooEasy:ModernMITE:3.7.5"
+    localRuntime "com.github.MinecraftIsTooEasy:Gson:2.10.1"
+    localRuntime "com.github.MinecraftIsTooEasy:FastUtil:8.5.12"
 }
 
 def fmlResolvedFile = configurations.fml.files.iterator().next()

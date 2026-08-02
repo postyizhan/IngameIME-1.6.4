@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ChatAllowedCharactersMixin {
     @Inject(method = "isAllowedCharacter", at = @At("HEAD"), cancellable = true)
     private static void ingameime$isAllowedCharacter(char character, CallbackInfoReturnable<Boolean> cir) {
-        cir.setReturnValue(Boolean.valueOf(character != 0 && character != 167 && !Character.isISOControl(character)));
+        cir.setReturnValue(character != 0 && character != 167 && !Character.isISOControl(character));
     }
 
     @Inject(method = "filerAllowedCharacters", at = @At("HEAD"), cancellable = true)

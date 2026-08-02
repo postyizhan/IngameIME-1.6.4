@@ -1,6 +1,7 @@
 package com.dhj.ingameime;
 
 import com.dhj.ingameime.config.Config;
+import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.ModInitializer;
 import net.xiaoyu233.fml.config.ConfigRegistry;
 import org.apache.logging.log4j.LogManager;
@@ -15,7 +16,8 @@ import java.util.Optional;
  * ModInitializer：本模组是纯客户端模组（fml.mod.json 里 environment=client），
  * 不需要 CommonProxy/ClientProxy 这套双端分派。
  */
-public class IngameIME_Fish implements ModInitializer {
+// 臭ai在fish项目里说forge是说给谁听的，还是文档注释
+public class IngameIME_Fish implements ModInitializer, ClientModInitializer {
     public static final Logger LOG = LogManager.getLogger(Tags.MOD_NAME);
 
     public static void logDebugInfo(String message, Object... params) {
@@ -44,7 +46,7 @@ public class IngameIME_Fish implements ModInitializer {
         int i = 0;
         while (i < message.length()) {
             if (next < params.length && message.charAt(i) == '{' && i + 1 < message.length() && message.charAt(i + 1) == '}') {
-                result.append(String.valueOf(params[next++]));
+                result.append(params[next++]);
                 i += 2;
             } else {
                 result.append(message.charAt(i++));
@@ -60,8 +62,13 @@ public class IngameIME_Fish implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        // 入口在 Minecraft 构造之前触发（见 FML 的 ClientEntrypointMixin），
-        // 此时 Display/HWND 都还不存在，所以只加载原生库，InputContext 首次激活时才创建。
+        // 滚木，实现ModInitializer只是为了拿到createConfig
         ClientProxy.init();
+        
+    }
+    
+    @Override
+    public void onInitializeClient() {
+//        ClientProxy.init();
     }
 }

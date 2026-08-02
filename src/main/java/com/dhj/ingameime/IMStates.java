@@ -5,6 +5,7 @@ import com.dhj.ingameime.control.BookControl;
 import com.dhj.ingameime.control.IControl;
 import com.dhj.ingameime.control.NoControl;
 import com.dhj.ingameime.control.SignControl;
+import net.minecraft.GuiChat;
 import net.minecraft.GuiScreenBook;
 import net.minecraft.GuiEditSign;
 
@@ -23,6 +24,11 @@ public enum IMStates implements IMEventHandler {
                 setControl(new BookControl(screen), false);
                 Internal.setActivated(true);
                 return OpenedInternal;
+            }
+            if (screen instanceof GuiChat) {
+                setControl(NoControl.NO_CONTROL, false);
+                Internal.setActivated(true);
+                return OpenedAuto;
             }
             return this;
         }

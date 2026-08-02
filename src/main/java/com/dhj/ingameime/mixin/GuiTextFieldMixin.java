@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class GuiTextFieldMixin {
     @Inject(method = "setFocused", at = @At("HEAD"))
     private void ingameime$onSetFocused(boolean focused, CallbackInfo ci) {
-        IngameIME_Fish.logVerboseInfo("GuiTextField focus hook: focused={}, class={}", Boolean.valueOf(focused), this.getClass().getName());
+        IngameIME_Fish.logVerboseInfo("GuiTextField focus hook: focused={}, class={}", focused, this.getClass().getName());
         if (focused && !ClientProxy.hasOpenScreen()) {
             return;
         }

@@ -38,7 +38,7 @@ public class EntityRendererMixin {
                         Boolean.valueOf(Internal.getActivated()),
                         mc == null || mc.currentScreen == null ? "null" : mc.currentScreen.getClass().getName(),
                         ClientProxy.Screen.PreEdit.getContentForDebug(),
-                        Integer.valueOf(ClientProxy.Screen.PreEdit.getCursorForDebug()));
+		                ClientProxy.Screen.PreEdit.getCursorForDebug());
             }
         }
         ClientProxy.INSTANCE.drawOverlay();
