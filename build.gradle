@@ -34,6 +34,10 @@ dependencies {
     localRuntime "com.github.MinecraftIsTooEasy:ModernMITE:3.7.5"
     localRuntime "com.github.MinecraftIsTooEasy:Gson:2.10.1"
     localRuntime "com.github.MinecraftIsTooEasy:FastUtil:8.5.12"
+
+    // EMI 仅作为编译期依赖：编译时引用其公开类，运行期靠 EmiCompat 的
+    // Class.forName 探测，未装 EMI 也能正常加载本模组。
+    compileOnly "com.github.MinecraftIsTooEasy:EMI:1.1.26"
 }
 
 def fmlResolvedFile = configurations.fml.files.iterator().next()

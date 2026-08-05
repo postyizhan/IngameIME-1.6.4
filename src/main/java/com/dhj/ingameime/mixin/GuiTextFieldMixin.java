@@ -1,11 +1,14 @@
 package com.dhj.ingameime.mixin;
 
 import com.dhj.ingameime.ClientProxy;
+import com.dhj.ingameime.IMStates;
 import com.dhj.ingameime.IngameIME_Fish;
 import com.dhj.ingameime.Internal;
 import com.dhj.ingameime.control.VanillaTextFieldControl;
 import net.minecraft.GuiTextField;
+import net.xiaoyu233.fml.util.ReflectHelper;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -17,14 +20,26 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 对应原 Forge 版 IngameIMETransformer.injectGuiTextFieldHooks()。
  */
 @Mixin(GuiTextField.class)
-public class GuiTextFieldMixin {
+public abstract class GuiTextFieldMixin {
+    @Shadow public abstract boolean isFocused();
+    @Shadow public abstract boolean getVisible();
+    
     @Inject(method = "setFocused", at = @At("HEAD"))
     private void ingameime$onSetFocused(boolean focused, CallbackInfo ci) {
         IngameIME_Fish.logVerboseInfo("GuiTextField focus hook: focused={}, class={}", focused, this.getClass().getName());
-        if (focused && !ClientProxy.hasOpenScreen()) {
-            return;
-        }
         VanillaTextFieldControl.onFocusChange(this, focused);
+        if (focused) {
+            ClientProxy.INSTANCE.onScreenOpen(ReflectHelper.dyCast(this));
+        } else if (IMStates.isControlObject(this, false)) {
+            ClientProxy.INSTANCE.onScreenClose();
+        }
+    }
+
+    @Inject(method = "drawTextBox", at = @At("HEAD"))
+    private void ingameime$onDrawTextBox(CallbackInfo ci) {
+        if (this.isFocused() && this.getVisible() && !IMStates.isControlObject(ReflectHelper.dyCast(this), false)) {
+            ClientProxy.INSTANCE.onScreenOpen(ReflectHelper.dyCast(this));
+        }
     }
 
     /**

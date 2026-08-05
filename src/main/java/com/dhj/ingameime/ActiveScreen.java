@@ -23,12 +23,12 @@ public final class ActiveScreen {
     private ActiveScreen() {
     }
 
-    /** 当前正在接受输入的界面，优先返回常规 currentScreen，其次是 MITE 的 imposed chat。 */
+    /** 当前正在接受输入的界面，优先返回 MITE 的 imposed chat，其次是常规 currentScreen。 */
     public static GuiScreen get() {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc == null) return null;
-        if (mc.currentScreen != null) return mc.currentScreen;
-        return mc.imposed_gui_chat;
+        if (mc.imposed_gui_chat != null) return mc.imposed_gui_chat;
+        return mc.currentScreen;
     }
 
     public static boolean isOpen() {

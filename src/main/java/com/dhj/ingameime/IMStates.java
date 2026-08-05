@@ -1,13 +1,18 @@
 package com.dhj.ingameime;
 
+import com.dhj.ingameime.compat.EmiCompat;
 import com.dhj.ingameime.config.Config;
 import com.dhj.ingameime.control.BookControl;
 import com.dhj.ingameime.control.IControl;
 import com.dhj.ingameime.control.NoControl;
 import com.dhj.ingameime.control.SignControl;
+import com.dhj.ingameime.control.VanillaTextFieldControl;
 import net.minecraft.GuiChat;
 import net.minecraft.GuiScreenBook;
 import net.minecraft.GuiEditSign;
+import net.minecraft.GuiTextField;
+
+import java.lang.reflect.Field;
 
 public enum IMStates implements IMEventHandler {
     Disabled {
@@ -29,6 +34,31 @@ public enum IMStates implements IMEventHandler {
                 setControl(NoControl.NO_CONTROL, false);
                 Internal.setActivated(true);
                 return OpenedAuto;
+            }
+            if (screen instanceof GuiTextField) {
+                setControl(new VanillaTextFieldControl<>(screen), false);
+                Internal.setActivated(true);
+                return OpenedAuto;
+            }
+            if (EmiCompat.isEmiSearchWidget(screen)) {
+                setControl(EmiCompat.wrapSearchControl(), false);
+                Internal.setActivated(true);
+                return OpenedAuto;
+            }
+
+            for (Field f : screen.getClass().getDeclaredFields()) {
+                try {
+                    f.setAccessible(true);
+                    if (!GuiTextField.class.isAssignableFrom(f.getType())) {
+                        continue;
+                    }
+                    if (f.get(screen) instanceof GuiTextField) {
+                        setControl(NoControl.NO_CONTROL, false);
+                        Internal.setActivated(true);
+                        return OpenedAuto;
+                    }
+                } catch (Throwable e) {
+                }
             }
             return this;
         }

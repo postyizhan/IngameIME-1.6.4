@@ -1,5 +1,6 @@
 package com.dhj.ingameime;
 
+import com.dhj.ingameime.compat.EmiCompat;
 import com.dhj.ingameime.config.Config;
 import com.dhj.ingameime.control.IControl;
 import com.dhj.ingameime.gui.OverlayScreen;
@@ -54,12 +55,12 @@ public class ClientProxy implements IMEventHandler {
             if (now - lastOverlayVerboseLog >= OVERLAY_LOG_INTERVAL_MS) {
                 lastOverlayVerboseLog = now;
                 IngameIME_Fish.logVerboseInfo("Overlay draw check: shouldDraw={}, updatedRect={}, hasScreen={}, overlayActive={}, activated={}, screen={}, pos=({},{}), size={}x{}, content='{}', cursor={}",
-                        Boolean.valueOf(shouldDraw), Boolean.valueOf(updatedPreEditRect), Boolean.valueOf(hasScreen),
-                        Boolean.valueOf(Screen.isActive()), Boolean.valueOf(Internal.getActivated()),
+		                shouldDraw, updatedPreEditRect, hasScreen,
+		                Screen.isActive(), Internal.getActivated(),
                         hasScreen ? screen.getClass().getName() : "null",
-                        Integer.valueOf(Screen.PreEdit.X), Integer.valueOf(Screen.PreEdit.Y),
-                        Integer.valueOf(Screen.PreEdit.Width), Integer.valueOf(Screen.PreEdit.Height),
-                        Screen.PreEdit.getContentForDebug(), Integer.valueOf(Screen.PreEdit.getCursorForDebug()));
+		                Screen.PreEdit.X, Screen.PreEdit.Y,
+                        Screen.PreEdit.Width, Screen.PreEdit.Height,
+                        Screen.PreEdit.getContentForDebug(), Screen.PreEdit.getCursorForDebug());
             }
         }
         if (shouldDraw) {
@@ -97,6 +98,7 @@ public class ClientProxy implements IMEventHandler {
             }
             Internal.ensureInactiveForGameplay();
         }
+        EmiCompat.tick();
         updateNativePreEditRectFromActiveControl();
         Internal.drainCallbackQueue();
         Internal.drainCommitQueue();

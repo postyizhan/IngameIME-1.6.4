@@ -17,7 +17,7 @@ import java.awt.Point;
  * 与 getCursorPos 期望的裸宽度不符。
  */
 public class VanillaTextFieldControl<T> extends AbstractControl<T> {
-    protected VanillaTextFieldControl(T control) {
+    public VanillaTextFieldControl(T control) {
         super(control);
     }
 

@@ -16,7 +16,8 @@ public class GuiChatMixin {
 	}
 
 	@Inject(method = "<init>(Ljava/lang/String;)V", at = @At("TAIL"))
-	private void compatVanillaChatActionOpenWithString(CallbackInfo ci) {
+	private void compatVanillaChatActionOpenWithString(String withText, CallbackInfo ci) {
+		if (withText.equals("/")) return;
 		ClientProxy.INSTANCE.onScreenOpen(ReflectHelper.dyCast(this));
 	}
 
